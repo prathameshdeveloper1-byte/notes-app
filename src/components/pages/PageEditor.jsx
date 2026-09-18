@@ -30,11 +30,11 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Highlighter, Heading1, Heading2, Heading3,
   List, ListOrdered, CheckSquare, Code, Quote, ArrowLeft, Star, Tag, Palette,
   Download, Cloud, Loader2, Sparkles, Undo2, Check, AlertCircle, CheckCircle2, X,
-  Edit3, Eye, Copy, Table as TableIcon
+  Edit3, Eye, Copy, Table as TableIcon, ChevronLeft, ChevronRight, Plus
 } from 'lucide-react';
 
 export default function PageEditor() {
-  const { pages, bookPages, savePage, saving } = usePageStore();
+  const { pages, bookPages, savePage, saving, addPage } = usePageStore();
   const { activePageId, activeBookId, activeFolderId, setActivePage } = useUIStore();
   const { user } = useAuthStore();
 
@@ -42,6 +42,24 @@ export default function PageEditor() {
 
   // Dual View vs Edit Mode
   const [isEditing, setIsEditing] = useState(false);
+
+  // Topic / Folder Multi-Page Navigation
+  const currentFolderId = activeFolderId || page?.folderId;
+  const topicPages = (currentFolderId
+    ? [...pages, ...bookPages].filter(p => p.folderId === currentFolderId)
+    : (activeBookId
+        ? [...pages, ...bookPages].filter(p => p.bookId === activeBookId)
+        : [...pages, ...bookPages])
+  ).filter((p, index, self) => index === self.findIndex(t => t.id === p.id));
+  
+  topicPages.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || (a.createdAt || 0) - (b.createdAt || 0));
+
+  const currentPageIndex = topicPages.findIndex(p => p.id === activePageId);
+  const totalTopicPages = topicPages.length;
+  const hasPrevPage = currentPageIndex > 0;
+  const hasNextPage = currentPageIndex >= 0 && currentPageIndex < totalTopicPages - 1;
+  const prevPageItem = hasPrevPage ? topicPages[currentPageIndex - 1] : null;
+  const nextPageItem = hasNextPage ? topicPages[currentPageIndex + 1] : null;
 
   const [title, setTitle] = useState(page?.title || '');
   const [tags, setTags] = useState(page?.tags || []);
@@ -90,6 +108,35 @@ export default function PageEditor() {
     }, 800);
   }, [activePageId, activeBookId, activeFolderId, savePage]);
 
+  const handlePrevPage = () => {
+    if (hasPrevPage && prevPageItem) {
+      setActivePage(prevPageItem.id);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (hasNextPage && nextPageItem) {
+      setActivePage(nextPageItem.id);
+    }
+  };
+
+  const handleAddNewPage = async () => {
+    try {
+      const newId = await addPage({
+        bookId: activeBookId || page?.bookId,
+        folderId: currentFolderId || page?.folderId,
+        title: '',
+      });
+      if (newId) {
+        setActivePage(newId);
+        showToast('success', 'Created new page in this topic!');
+      }
+    } catch (err) {
+      console.error('Failed to add page:', err);
+      showToast('error', 'Could not create new page', err.message);
+    }
+  };
+
   // Extract all images from the Tiptap document
   const extractImagesFromJSON = (doc) => {
     const list = [];
@@ -123,6 +170,7 @@ export default function PageEditor() {
   };
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({ codeBlock: false }),
       Highlight,
@@ -207,6 +255,8 @@ export default function PageEditor() {
         const json = JSON.parse(page.contentJSON);
         editor.commands.setContent(json, false);
       } catch (err) {}
+    } else if (editor) {
+      editor.commands.clearContent();
     }
   }, [activePageId]);
 
@@ -263,6 +313,41 @@ export default function PageEditor() {
     }
   };
 
+  // Freeform click-anywhere: if clicking in blank space below content, auto-insert blank lines down to cursor
+  const handleEditorContainerClick = (e) => {
+    if (!editor || !isEditing) return;
+
+    const target = e.target;
+    // Don't interfere with buttons, inputs, images, or links
+    if (target.closest('button') || target.closest('input') || target.tagName === 'IMG' || target.tagName === 'A') {
+      return;
+    }
+
+    const editorDom = editor.view?.dom;
+    if (!editorDom) return;
+
+    const clickY = e.clientY;
+    const lastChild = editorDom.lastElementChild;
+
+    if (lastChild) {
+      const lastChildRect = lastChild.getBoundingClientRect();
+      // If clicking below the last child element in the editor's empty space
+      if (clickY > lastChildRect.bottom + 8) {
+        const distance = clickY - lastChildRect.bottom;
+        const lineHeight = 36; // 36px line height
+        const linesToInsert = Math.max(1, Math.min(25, Math.floor(distance / lineHeight)));
+
+        const emptyParagraphs = Array(linesToInsert).fill({ type: 'paragraph' });
+        editor.chain().focus('end').insertContent(emptyParagraphs).focus('end').run();
+        return;
+      }
+    }
+
+    if (!editor.isFocused) {
+      editor.commands.focus();
+    }
+  };
+
   // AI Formatting Action (Strict Fidelity + Tables + Granular Suggestions)
   const handleAIFormat = async () => {
     if (!editor) return;
@@ -299,10 +384,17 @@ export default function PageEditor() {
         throw new Error(data.error || 'Failed to format with AI');
       }
 
-      const { formattedUserContent, suggestions } = data;
+      const { generatedTitle, formattedUserContent, suggestions } = data;
 
       if (!formattedUserContent || !formattedUserContent.trim()) {
         throw new Error('AI returned empty content. Your original note was kept intact.');
+      }
+
+      // Auto-set title if page is untitled
+      let currentTitle = title;
+      if (generatedTitle && (!title || title === 'Untitled Page' || title === 'Untitled Note' || !title.trim())) {
+        setTitle(generatedTitle);
+        currentTitle = generatedTitle;
       }
 
       // SAFETY: If the AI accidentally returned raw JSON as content, reject it
@@ -338,14 +430,26 @@ export default function PageEditor() {
       }
 
       const newJSON = JSON.stringify(editor.getJSON());
-      triggerSave(newJSON, tags, title, color, starred);
+      triggerSave(newJSON, tags, currentTitle, color, starred);
+      savePage(
+        activePageId,
+        {
+          contentJSON: newJSON,
+          tags,
+          title: currentTitle,
+          color,
+          starred,
+        },
+        activeBookId,
+        activeFolderId,
+      );
       setUploadedImages(extractImagesFromJSON(editor.getJSON()));
 
       // Store AI suggestion cards separately for individual Keep/Discard
       if (suggestions && suggestions.length > 0) {
         setAiSuggestions(suggestions);
       }
-      showToast('success', 'Note formatted cleanly with tables & original content intact!');
+      showToast('success', currentTitle !== title ? `Title set to "${currentTitle}" & notes formatted!` : 'Note formatted cleanly with original content intact!');
     } catch (err) {
       console.error('AI Format Error:', err);
       if (backupJSON && editor) {
@@ -545,12 +649,48 @@ export default function PageEditor() {
 
       {/* Top Header & Mode Toggle Bar */}
       <div className="flex items-center justify-between px-6 sm:px-10 pt-5 pb-3 border-b border-paper-200/80 dark:border-ink-800 bg-white/60 dark:bg-ink-900/60 backdrop-blur-md z-10">
-        <button
-          onClick={() => setActivePage(null)}
-          className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 dark:hover:text-paper-100 transition"
-        >
-          <ArrowLeft size={14} /> Back
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActivePage(null)}
+            className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 dark:hover:text-paper-100 transition"
+          >
+            <ArrowLeft size={14} /> Back
+          </button>
+
+          <div className="h-4 w-px bg-paper-300 dark:bg-ink-700" />
+
+          {/* Topic Page Navigation */}
+          <div className="flex items-center gap-1 bg-paper-100 dark:bg-ink-800 px-2 py-1 rounded-xl border border-paper-200 dark:border-ink-700 text-xs shadow-sm">
+            <button
+              onClick={handlePrevPage}
+              disabled={!hasPrevPage}
+              className="p-1 rounded-lg hover:bg-paper-200 dark:hover:bg-ink-700 disabled:opacity-25 transition text-ink-600 dark:text-paper-300"
+              title="Previous Page (Topic)"
+            >
+              <ChevronLeft size={13} />
+            </button>
+            <span className="font-mono text-[11px] font-medium text-ink-700 dark:text-paper-200 px-1 select-none">
+              Page {currentPageIndex >= 0 ? currentPageIndex + 1 : 1} of {totalTopicPages || 1}
+            </span>
+            <button
+              onClick={handleNextPage}
+              disabled={!hasNextPage}
+              className="p-1 rounded-lg hover:bg-paper-200 dark:hover:bg-ink-700 disabled:opacity-25 transition text-ink-600 dark:text-paper-300"
+              title="Next Page (Topic)"
+            >
+              <ChevronRight size={13} />
+            </button>
+          </div>
+
+          {/* Add Page to Topic */}
+          <button
+            onClick={handleAddNewPage}
+            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold transition"
+            title="Add another page to this topic"
+          >
+            <Plus size={13} /> Add Page
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           {/* View / Edit Mode Toggle Button */}
@@ -731,50 +871,57 @@ export default function PageEditor() {
         </div>
       )}
 
-      {/* Main Document Body (Clean, Left-Aligned Responsive Layout) */}
+      {/* Main Document Body */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl px-6 sm:px-12 py-8 text-left">
+        <div className={cn(
+          isEditing
+            ? 'max-w-4xl px-6 sm:px-12 py-8 text-left'
+            : 'notebook-page'
+        )}>
           
-          {/* Title Header */}
-          <div className="mb-4">
-            {isEditing ? (
+          {/* Notebook Page Header (Clean, Authentic Student Notebook Style) */}
+          {isEditing ? (
+            <div className="mb-4 pb-2 border-b border-paper-200 dark:border-ink-700">
               <input
                 type="text"
                 value={title}
                 onChange={handleTitleChange}
-                placeholder="Note title..."
-                className="w-full text-3xl sm:text-4xl font-serif font-bold text-ink-900 dark:text-paper-100 bg-transparent placeholder-ink-300 focus:outline-none tracking-tight"
+                placeholder="Page title (optional)..."
+                className="w-full text-2xl sm:text-3xl font-serif font-bold text-ink-900 dark:text-paper-100 bg-transparent placeholder-ink-300 focus:outline-none tracking-tight"
               />
-            ) : (
-              <h1
-                onDoubleClick={() => setIsEditing(true)}
-                className="text-3xl sm:text-4xl font-serif font-bold text-ink-900 dark:text-paper-100 tracking-tight cursor-pointer hover:opacity-90 transition"
-                title="Double click to edit title"
-              >
-                {title || 'Untitled Note'}
-              </h1>
-            )}
-
-            {/* Date & Read time meta */}
-            <div className="flex items-center gap-3 text-xs text-ink-400 dark:text-ink-500 mt-2">
-              <span>{formatDate(page.updatedAt)}</span>
-              <span>&middot;</span>
-              <span>{readingTime(wc)}</span>
-              <span>&middot;</span>
-              <span>{wc} words</span>
-              {!isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="text-emerald-600 hover:text-emerald-700 font-medium ml-2 inline-flex items-center gap-1"
-                >
-                  <Edit3 size={11} /> Press E to edit
-                </button>
-              )}
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Notebook Top Rule with Page Number & Date */}
+              <div className="flex items-center justify-between pb-2 mb-6 border-b-2 border-red-300/70 dark:border-red-900/50 text-xs font-mono select-none">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-red-600/90 dark:text-red-400 tracking-widest uppercase text-[11px]">
+                    PAGE {currentPageIndex >= 0 ? currentPageIndex + 1 : 1}
+                  </span>
+                  {totalTopicPages > 1 && (
+                    <span className="text-ink-400 dark:text-ink-500 font-normal">of {totalTopicPages}</span>
+                  )}
+                </div>
+                <span className="text-ink-400 dark:text-ink-500 text-[11px]">
+                  Date: {formatDate(page.updatedAt)}
+                </span>
+              </div>
+
+              {/* Show title ONLY if custom named (no 'Untitled Page' clutter) */}
+              {title && title !== 'Untitled Page' && title !== 'Untitled Note' && title.trim() !== '' && (
+                <h1
+                  onDoubleClick={() => setIsEditing(true)}
+                  className="text-2xl sm:text-3xl font-serif font-bold text-ink-900 dark:text-paper-100 tracking-tight cursor-pointer hover:opacity-80 transition mb-6 pb-2 border-b-2 border-blue-200/80 dark:border-blue-900/50"
+                  title="Double-click to edit title"
+                >
+                  {title}
+                </h1>
+              )}
+            </>
+          )}
 
           {/* Tags */}
-          <div className="flex flex-wrap items-center gap-1.5 mb-6">
+          <div className="flex flex-wrap items-center gap-1.5 mb-4">
             <Tag size={13} className="text-ink-300 dark:text-ink-600" />
             {tags.map(tag => (
               <span
@@ -822,12 +969,49 @@ export default function PageEditor() {
             </div>
           )}
 
-          {/* Note Content (Editor when isEditing=true, Rendered Document when isEditing=false) */}
+          {/* Note Content */}
           <div
-            className={cn('tiptap-editor', !isEditing && 'cursor-default')}
+            className={cn('tiptap-editor min-h-[500px]', isEditing ? 'cursor-text' : 'cursor-default')}
+            onClick={handleEditorContainerClick}
             onDoubleClick={() => !isEditing && setIsEditing(true)}
           >
             <EditorContent editor={editor} />
+          </div>
+
+          {/* Student Notebook Multi-Page Navigation Footer */}
+          <div className="mt-12 pt-6 border-t-2 border-dashed border-paper-300 dark:border-ink-700 flex items-center justify-between text-xs text-ink-500 dark:text-ink-400 select-none">
+            {hasPrevPage ? (
+              <button
+                onClick={handlePrevPage}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 text-ink-700 dark:text-paper-200 font-medium transition shadow-sm border border-paper-200 dark:border-ink-700"
+              >
+                <ChevronLeft size={14} /> Previous Page
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="font-mono text-ink-400 dark:text-ink-500 font-medium text-xs">
+              — Page {currentPageIndex >= 0 ? currentPageIndex + 1 : 1} of {totalTopicPages || 1} —
+            </div>
+
+            <div className="flex items-center gap-2">
+              {hasNextPage ? (
+                <button
+                  onClick={handleNextPage}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-paper-200 dark:hover:bg-ink-800 text-ink-700 dark:text-paper-200 font-medium transition shadow-sm border border-paper-200 dark:border-ink-700"
+                >
+                  Next Page <ChevronRight size={14} />
+                </button>
+              ) : null}
+              <button
+                onClick={handleAddNewPage}
+                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl font-medium transition shadow-sm"
+                title="Add a new page to this topic"
+              >
+                <Plus size={13} /> Add Page
+              </button>
+            </div>
           </div>
 
         </div>

@@ -11,7 +11,255 @@
 }
 
 @layer components {
-  /* Tiptap & GeeksforGeeks Documentation Typography */
+
+  /* ══════════════════════════════════════════════════════════════
+     STUDENT NOTEBOOK PAGE (View Mode)
+     Authentic paper feel, ruled lines per paragraph, crisp tables
+     ══════════════════════════════════════════════════════════════ */
+
+  .notebook-page {
+    background-color: #fdfbf7;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+    border-radius: 1rem;
+    border: 1px solid #e9e5dd;
+    border-left: 6px solid #e2d9cc;
+    padding: 2.5rem 2.5rem 3.5rem 3rem;
+    margin: 1.5rem auto;
+    max-width: 56rem;
+    position: relative;
+  }
+
+  .dark .notebook-page {
+    background-color: #1c1e27;
+    border-color: #2b2e3b;
+    border-left-color: #353849;
+  }
+
+  /* Ruled lines for regular text paragraphs & list items */
+  .notebook-page .tiptap-editor p,
+  .notebook-page .tiptap-editor li {
+    line-height: 2.25rem; /* 36px */
+    background-image: linear-gradient(to bottom, transparent calc(2.25rem - 1px), #dbeafe calc(2.25rem - 1px));
+    background-size: 100% 2.25rem;
+    margin-bottom: 0.85rem;
+    color: #1e293b;
+    font-size: 15.5px;
+  }
+
+  .dark .notebook-page .tiptap-editor p,
+  .dark .notebook-page .tiptap-editor li {
+    background-image: linear-gradient(to bottom, transparent calc(2.25rem - 1px), #293548 calc(2.25rem - 1px));
+    color: #e2e8f0;
+  }
+
+  /* Headings with neat student underline */
+  .notebook-page .tiptap-editor h1 {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 1.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 2px solid #3b82f6;
+    line-height: 1.3;
+  }
+
+  .dark .notebook-page .tiptap-editor h1 {
+    color: #f8fafc;
+    border-bottom-color: #2563eb;
+  }
+
+  .notebook-page .tiptap-editor h2 {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1.5px solid #93c5fd;
+    line-height: 1.35;
+  }
+
+  .dark .notebook-page .tiptap-editor h2 {
+    color: #f1f5f9;
+    border-bottom-color: #1d4ed8;
+  }
+
+  .notebook-page .tiptap-editor h3 {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+  }
+
+  .dark .notebook-page .tiptap-editor h3 {
+    color: #e2e8f0;
+  }
+
+  /* Student Study Note / Highlighter Callout */
+  .notebook-page .tiptap-editor blockquote,
+  .notebook-page .gfg-callout {
+    background: #fefce8;
+    border-left: 4px solid #facc15;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    color: #713f12;
+    box-shadow: 0 1px 4px rgba(234, 179, 8, 0.1);
+    line-height: 1.65;
+    font-family: inherit;
+    font-style: normal;
+  }
+
+  .dark .notebook-page .tiptap-editor blockquote,
+  .dark .notebook-page .gfg-callout {
+    background: #2a2618;
+    border-left-color: #eab308;
+    color: #fef08a;
+  }
+
+  .notebook-page .tiptap-editor blockquote strong {
+    color: #854d0e;
+    font-weight: 700;
+  }
+
+  .dark .notebook-page .tiptap-editor blockquote strong {
+    color: #fef08a;
+  }
+
+  /* Student Ruled Comparison Tables */
+  .notebook-page .tiptap-editor table,
+  .notebook-page .gfg-table {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .dark .notebook-page .tiptap-editor table,
+  .dark .notebook-page .gfg-table {
+    background: #1e2430;
+    border-color: #334155;
+  }
+
+  .notebook-page .tiptap-editor th,
+  .notebook-page .gfg-table th {
+    background: #f1f5f9;
+    border-bottom: 2px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-align: left;
+  }
+
+  .dark .notebook-page .tiptap-editor th,
+  .dark .notebook-page .gfg-table th {
+    background: #283141;
+    border-bottom-color: #334155;
+    border-right-color: #334155;
+    color: #cbd5e1;
+  }
+
+  .notebook-page .tiptap-editor td,
+  .notebook-page .gfg-table td {
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #f8fafc;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: #334155;
+  }
+
+  .dark .notebook-page .tiptap-editor td,
+  .dark .notebook-page .gfg-table td {
+    border-bottom-color: #334155;
+    border-right-color: #283141;
+    color: #cbd5e1;
+  }
+
+  .notebook-page .tiptap-editor tr:last-child td,
+  .notebook-page .gfg-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .notebook-page .tiptap-editor tr:hover td,
+  .notebook-page .gfg-table tr:hover td {
+    background-color: #f8fafc;
+  }
+
+  .dark .notebook-page .tiptap-editor tr:hover td,
+  .dark .notebook-page .gfg-table tr:hover td {
+    background-color: #232a38;
+  }
+
+  /* Code Cards in Notebook */
+  .notebook-page .tiptap-editor code {
+    background: #f1f5f9;
+    color: #0284c7;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: monospace;
+    font-size: 0.85em;
+  }
+
+  .dark .notebook-page .tiptap-editor code {
+    background: #272d3b;
+    color: #38bdf8;
+    border-color: #374151;
+  }
+
+  .notebook-page .tiptap-editor pre {
+    background: #1e293b;
+    color: #f8fafc;
+    border-radius: 0.75rem;
+    padding: 1.125rem 1.25rem;
+    margin: 1.25rem 0;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    font-family: monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+
+  .notebook-page .tiptap-editor pre code {
+    background: transparent;
+    color: inherit;
+    border: none;
+    padding: 0;
+  }
+
+  .notebook-page .tiptap-editor img {
+    border-radius: 0.75rem;
+    max-width: 100%;
+    margin: 1.25rem 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    border: 1px solid #e2e8f0;
+    cursor: zoom-in;
+  }
+
+  .dark .notebook-page .tiptap-editor img {
+    border-color: #334155;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════
+     EDITOR MODE (Clean Distraction-Free Flat Editor)
+     ══════════════════════════════════════════════════════════════ */
+
   .tiptap-editor {
     @apply font-serif text-base leading-relaxed;
     outline: none;
@@ -42,7 +290,7 @@
     @apply list-decimal list-inside mb-4 space-y-1.5 pl-2 text-ink-700 dark:text-paper-200;
   }
 
-  /* GeeksforGeeks Style Tables */
+  /* Tables (editor mode) */
   .tiptap-editor table,
   .gfg-table {
     @apply w-full my-6 border-collapse rounded-2xl overflow-hidden shadow-sm border border-paper-300 dark:border-ink-700 text-sm font-sans;
@@ -68,14 +316,14 @@
     @apply bg-paper-100/60 dark:bg-ink-800/60;
   }
 
-  /* GeeksforGeeks Style Definition & Note Callout Cards */
+  /* Blockquote / Callout (editor mode) */
   .tiptap-editor blockquote,
   .gfg-callout {
-    @apply my-6 p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border-l-4 border-emerald-500 text-ink-800 dark:text-emerald-200 text-sm leading-relaxed shadow-sm font-sans not-italic;
+    @apply my-6 p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border-l-4 border-amber-400 text-amber-900 dark:text-amber-200 text-sm leading-relaxed shadow-sm font-sans not-italic;
   }
 
   .tiptap-editor blockquote strong {
-    @apply text-emerald-800 dark:text-emerald-300 font-semibold;
+    @apply text-amber-900 dark:text-amber-300 font-semibold;
   }
 
   /* Inline Code */

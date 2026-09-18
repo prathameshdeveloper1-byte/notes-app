@@ -28,10 +28,10 @@ export default function PageCard({ page }) {
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
       className={cn(
         'relative break-inside-avoid rounded-2xl border cursor-pointer group transition-all hover:shadow-page hover:-translate-y-0.5 mb-4',
         'border-paper-200 dark:border-ink-700 shadow-card'

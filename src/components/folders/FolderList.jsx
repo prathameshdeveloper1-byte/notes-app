@@ -63,9 +63,9 @@ export default function FolderList() {
 
       <button
         onClick={() => setCreateOpen(true)}
-        className="flex items-center gap-1.5 w-full mt-2 px-3 py-2 text-xs text-ink-400 dark:text-ink-500 hover:text-ink-600 dark:hover:text-ink-300 hover:bg-ink-50 dark:hover:bg-ink-800 rounded-xl transition"
+        className="flex items-center justify-center gap-1.5 w-full mt-3 px-3 py-2 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl shadow-xs transition active:scale-[0.98]"
       >
-        <Plus size={13} />
+        <Plus size={14} />
         Add Chapter
       </button>
 

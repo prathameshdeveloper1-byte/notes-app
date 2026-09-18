@@ -64,10 +64,10 @@ export default function FolderItem({ folder, isActive }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group flex items-center gap-1 px-2 py-1.5 rounded-xl cursor-pointer transition-all',
+        'group flex items-center gap-1.5 px-2.5 py-2 my-1 rounded-xl cursor-pointer transition-all border shadow-xs active:scale-[0.98]',
         isActive
-          ? 'bg-ink-800/10 dark:bg-paper-100/10 text-ink-800 dark:text-paper-100'
-          : 'hover:bg-ink-800/5 dark:hover:bg-paper-100/5 text-ink-600 dark:text-ink-400'
+          ? 'bg-amber-100/70 dark:bg-amber-950/40 text-ink-900 dark:text-amber-100 border-amber-300 dark:border-amber-800 font-semibold shadow-xs'
+          : 'bg-white dark:bg-ink-800/60 text-ink-700 dark:text-paper-200 border-paper-200/80 dark:border-ink-700/80 hover:bg-paper-100 dark:hover:bg-ink-700 hover:border-paper-300'
       )}
       onClick={() => !isEditing && setActiveFolder(folder.id)}
     >

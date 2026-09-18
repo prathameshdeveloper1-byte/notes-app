@@ -84,50 +84,56 @@ export default function PageViewer() {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="absolute inset-0 overflow-y-auto"
             >
-              <div className="max-w-3xl mx-auto px-6 py-10">
-                <article className="bg-white dark:bg-ink-800/90 rounded-3xl shadow-page p-8 sm:p-12 border border-paper-200 dark:border-ink-700 min-h-[70vh]">
-                  {/* Article Header */}
-                  <div className="flex items-start justify-between gap-4 mb-8 pb-6 border-b border-paper-200 dark:border-ink-700">
-                    <div>
-                      <h1 className="text-3xl sm:text-4xl font-serif font-bold text-ink-900 dark:text-paper-100 leading-tight mb-3">
-                        {currentPage.title}
-                      </h1>
-                      <div className="flex items-center gap-3 text-xs text-ink-400 dark:text-ink-500">
-                        <span>{formatDate(currentPage.updatedAt)}</span>
-                        <span>&middot;</span>
-                        <span>{readingTime(wordCount(currentPage.contentJSON))}</span>
-                        <span>&middot;</span>
-                        <span>{wordCount(currentPage.contentJSON)} words</span>
-                      </div>
+              <div className="max-w-4xl mx-auto py-6">
+                <div className="notebook-page rounded-2xl shadow-page min-h-[70vh]">
+                  {/* Notebook Top Rule with Page Number, Date, and Edit button */}
+                  <div className="flex items-center justify-between pb-2 mb-6 border-b-2 border-red-300/70 dark:border-red-900/50 text-xs font-mono select-none">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-red-600/90 dark:text-red-400 tracking-widest uppercase text-[11px]">
+                        PAGE {bookViewPageIndex + 1}
+                      </span>
+                      <span className="text-ink-400 dark:text-ink-500 font-normal">of {total}</span>
+                      <span className="text-ink-300 dark:text-ink-600">&middot;</span>
+                      <span className="text-ink-400 dark:text-ink-500 text-[11px]">
+                        Date: {formatDate(currentPage.updatedAt)}
+                      </span>
                     </div>
+
                     <button
                       onClick={() => setActivePage(currentPage.id)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-paper-100 dark:bg-ink-700 hover:bg-paper-200 dark:hover:bg-ink-600 text-ink-700 dark:text-paper-200 rounded-xl text-xs font-medium transition"
+                      className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold transition"
                       title="Edit this note"
                     >
-                      <Edit3 size={14} /> Edit
+                      <Edit3 size={13} /> Edit Note
                     </button>
                   </div>
 
+                  {/* Show Title only if named */}
+                  {currentPage.title && currentPage.title !== 'Untitled Page' && currentPage.title !== 'Untitled Note' && (
+                    <h1 className="text-2xl sm:text-3xl font-serif font-bold text-ink-900 dark:text-paper-100 leading-tight mb-6 pb-2 border-b-2 border-blue-200/80 dark:border-blue-900/50">
+                      {currentPage.title}
+                    </h1>
+                  )}
+
                   {/* Tags */}
                   {currentPage.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-8">
+                    <div className="flex flex-wrap gap-1.5 mb-4">
                       {currentPage.tags.map(tag => (
-                        <span key={tag} className="px-2.5 py-1 bg-paper-100 dark:bg-ink-700 rounded-lg text-xs font-medium text-ink-600 dark:text-paper-300">
+                        <span key={tag} className="px-2.5 py-0.5 bg-paper-100/80 dark:bg-ink-700 rounded-full text-xs font-medium text-ink-600 dark:text-paper-300">
                           #{tag}
                         </span>
                       ))}
                     </div>
                   )}
 
-                  {/* GeeksforGeeks Document Content */}
+                  {/* Notebook Content */}
                   <div className="tiptap-editor">
                     <RenderContent
                       contentJSON={currentPage.contentJSON}
                       onImageClick={(src, alt) => setLightboxImg({ src, alt })}
                     />
                   </div>
-                </article>
+                </div>
               </div>
             </motion.div>
           )}

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect } from 'react';
 import useUIStore from '../store/useUIStore';
@@ -112,7 +112,7 @@ export default function Home() {
 
                 {activePageId && (
                   <motion.div
-                    key={`editor-${activePageId}`}
+                    key="editor"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}

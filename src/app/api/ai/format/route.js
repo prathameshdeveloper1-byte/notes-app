@@ -28,6 +28,7 @@ ABSOLUTE RULES:
 - Keep all image URLs exactly: ![alt](url)
 - NEVER write tutorials, explanations, or new paragraphs that the user did not write.
 - NEVER expand a short note into a long article.
+- AUTOMATIC TITLE: Generate a concise, accurate 2-5 word title in "generatedTitle" based on the note's subject (e.g., "V8 Engine Architecture", "JavaScript Scope & Closures"). If the note is already named, keep or improve it.
 
 Title: ${title || 'Untitled'}
 ${imageRefs ? '\nImages:\n' + imageRefs + '\n' : ''}
@@ -37,7 +38,7 @@ ${rawText || '(empty)'}
 ---
 
 Respond with JSON only:
-{"formattedUserContent":"the formatted note in markdown","suggestions":[{"id":"sug-1","title":"tip title","type":"tip","content":"one short tip"}]}`;
+{"generatedTitle":"concise 2-5 word title","formattedUserContent":"the formatted note in markdown","suggestions":[{"id":"sug-1","title":"tip title","type":"tip","content":"one short tip"}]}`;
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
@@ -105,7 +106,16 @@ Respond with JSON only:
       );
     }
 
+    let genTitle = (parsed.generatedTitle || '').trim();
+    if (!genTitle) {
+      const headingMatch = content.match(/^#+\s+(.+)$/m);
+      if (headingMatch) {
+        genTitle = headingMatch[1].replace(/[*_~`#]/g, '').trim();
+      }
+    }
+
     return NextResponse.json({
+      generatedTitle: genTitle,
       formattedUserContent: content,
       suggestions: parsed.suggestions || [],
     });
