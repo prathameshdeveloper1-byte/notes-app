@@ -11,28 +11,123 @@
 }
 
 @layer components {
-  .tiptap-editor { @apply font-serif text-base leading-relaxed; outline: none; min-height: 400px; }
-  .tiptap-editor p { @apply mb-3; }
-  .tiptap-editor h1 { @apply text-3xl font-bold mb-4 mt-6 font-serif; }
-  .tiptap-editor h2 { @apply text-2xl font-semibold mb-3 mt-5 font-serif; }
-  .tiptap-editor h3 { @apply text-xl font-semibold mb-2 mt-4 font-serif; }
-  .tiptap-editor ul { @apply list-disc list-inside mb-3 space-y-1; }
-  .tiptap-editor ol { @apply list-decimal list-inside mb-3 space-y-1; }
-  .tiptap-editor blockquote { @apply border-l-4 border-paper-400 pl-4 italic text-ink-500 my-4; }
-  .tiptap-editor code { @apply bg-paper-200 dark:bg-ink-800 rounded px-1.5 py-0.5 text-sm font-mono; }
-  .tiptap-editor pre { @apply bg-ink-900 text-paper-100 rounded-lg p-4 my-4 overflow-x-auto; }
-  .tiptap-editor pre code { @apply bg-transparent text-inherit p-0; }
-  .tiptap-editor img { @apply rounded-lg max-w-full my-4 shadow-card; }
-  .tiptap-editor mark { @apply bg-yellow-200 dark:bg-yellow-900 rounded px-0.5; }
-  .tiptap-editor ul[data-type="taskList"] { @apply list-none pl-0; }
-  .tiptap-editor ul[data-type="taskList"] li { @apply flex gap-2 items-start; }
-  .tiptap-editor ul[data-type="taskList"] li > label { @apply flex-shrink-0 mt-1; }
-  .tiptap-editor ul[data-type="taskList"] li > div { @apply flex-1; }
-  .tiptap-editor ul[data-type="taskList"] li[data-checked="true"] > div { @apply line-through text-ink-400; }
+  /* Tiptap & GeeksforGeeks Documentation Typography */
+  .tiptap-editor {
+    @apply font-serif text-base leading-relaxed;
+    outline: none;
+    min-height: 450px;
+  }
+
+  .tiptap-editor p {
+    @apply mb-4 leading-relaxed text-ink-700 dark:text-paper-200 text-[15px];
+  }
+
+  .tiptap-editor h1 {
+    @apply text-3xl sm:text-4xl font-bold mb-4 mt-6 font-serif text-ink-900 dark:text-paper-100 tracking-tight;
+  }
+
+  .tiptap-editor h2 {
+    @apply text-2xl font-bold mb-3 mt-8 font-serif text-ink-800 dark:text-paper-100 pb-2 border-b border-paper-200 dark:border-ink-700;
+  }
+
+  .tiptap-editor h3 {
+    @apply text-xl font-semibold mb-2 mt-6 font-serif text-ink-800 dark:text-paper-100;
+  }
+
+  .tiptap-editor ul {
+    @apply list-disc list-inside mb-4 space-y-1.5 pl-2 text-ink-700 dark:text-paper-200;
+  }
+
+  .tiptap-editor ol {
+    @apply list-decimal list-inside mb-4 space-y-1.5 pl-2 text-ink-700 dark:text-paper-200;
+  }
+
+  /* GeeksforGeeks Style Tables */
+  .tiptap-editor table,
+  .gfg-table {
+    @apply w-full my-6 border-collapse rounded-2xl overflow-hidden shadow-sm border border-paper-300 dark:border-ink-700 text-sm font-sans;
+  }
+
+  .tiptap-editor th,
+  .gfg-table th {
+    @apply bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-semibold p-3.5 text-left border-b border-paper-300 dark:border-ink-700 text-xs uppercase tracking-wider;
+  }
+
+  .tiptap-editor td,
+  .gfg-table td {
+    @apply p-3.5 border-b border-paper-200 dark:border-ink-800 text-ink-700 dark:text-paper-200 text-xs sm:text-sm;
+  }
+
+  .tiptap-editor tr:last-child td,
+  .gfg-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .tiptap-editor tr:hover td,
+  .gfg-table tr:hover td {
+    @apply bg-paper-100/60 dark:bg-ink-800/60;
+  }
+
+  /* GeeksforGeeks Style Definition & Note Callout Cards */
+  .tiptap-editor blockquote,
+  .gfg-callout {
+    @apply my-6 p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border-l-4 border-emerald-500 text-ink-800 dark:text-emerald-200 text-sm leading-relaxed shadow-sm font-sans not-italic;
+  }
+
+  .tiptap-editor blockquote strong {
+    @apply text-emerald-800 dark:text-emerald-300 font-semibold;
+  }
+
+  /* Inline Code */
+  .tiptap-editor code {
+    @apply bg-paper-200 dark:bg-ink-800 text-emerald-700 dark:text-emerald-400 font-mono text-[13px] px-1.5 py-0.5 rounded-md font-medium;
+  }
+
+  /* Code Blocks */
+  .tiptap-editor pre {
+    @apply bg-ink-900 text-paper-100 rounded-2xl p-5 my-6 overflow-x-auto shadow-page border border-ink-800 relative font-mono text-sm leading-normal;
+  }
+
+  .tiptap-editor pre code {
+    @apply bg-transparent text-inherit p-0 text-[13px] font-mono;
+  }
+
+  /* Images */
+  .tiptap-editor img {
+    @apply rounded-2xl max-w-full my-6 shadow-page border border-paper-200 dark:border-ink-700 cursor-zoom-in transition-transform hover:scale-[1.01];
+  }
+
+  .tiptap-editor mark {
+    @apply bg-amber-200 dark:bg-amber-900/50 dark:text-amber-200 rounded px-1;
+  }
+
+  /* Task Lists */
+  .tiptap-editor ul[data-type="taskList"] {
+    @apply list-none pl-0 space-y-2;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] li {
+    @apply flex gap-2.5 items-start;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] li > label {
+    @apply flex-shrink-0 mt-1;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] li > div {
+    @apply flex-1;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] li[data-checked="true"] > div {
+    @apply line-through text-ink-400 dark:text-ink-500;
+  }
+
   .tiptap-editor p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     @apply text-ink-300 dark:text-ink-600 pointer-events-none float-left h-0;
   }
+
+  /* Custom Scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { @apply bg-paper-300 dark:bg-ink-700 rounded-full; }

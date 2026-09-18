@@ -15,7 +15,7 @@ export function pageToMarkdown(page) {
   return lines.join('\n');
 }
 
-function nodeToMarkdown(node, indent = 0) {
+export function nodeToMarkdown(node, indent = 0) {
   if (!node) return '';
   const pad = ' '.repeat(indent);
 
@@ -47,6 +47,26 @@ function nodeToMarkdown(node, indent = 0) {
       const checked = node.attrs?.checked ? '[x]' : '[ ]';
       return `${checked} ${(node.content || []).map(n => nodeToMarkdown(n)).join('').trim()}\n`;
     }
+    case 'image':
+      return `\n![${node.attrs?.alt || 'image'}](${node.attrs?.src})\n`;
+    case 'table': {
+      return '\n' + (node.content || []).map((row, idx) => {
+        const rowMd = nodeToMarkdown(row);
+        if (idx === 0) {
+          const cellCount = row.content?.length || 1;
+          const sep = '| ' + Array(cellCount).fill('---').join(' | ') + ' |\n';
+          return rowMd + sep;
+        }
+        return rowMd;
+      }).join('') + '\n';
+    }
+    case 'tableRow': {
+      const cells = (node.content || []).map(cell => nodeToMarkdown(cell).trim().replace(/\n+/g, ' '));
+      return `| ${cells.join(' | ')} |\n`;
+    }
+    case 'tableHeader':
+    case 'tableCell':
+      return (node.content || []).map(n => nodeToMarkdown(n)).join('').trim();
     case 'text': {
       let t = node.text || '';
       if (node.marks) {

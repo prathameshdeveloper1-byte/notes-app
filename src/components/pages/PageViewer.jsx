@@ -1,12 +1,12 @@
 'use client';
+
 import React, { useEffect, useState } from 'react';
 import usePageStore from '../../store/usePageStore';
 import useUIStore from '../../store/useUIStore';
-import useFolderStore from '../../store/useFolderStore';
-import useBookStore from '../../store/useBookStore';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit3, Copy, Check, BookOpen, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { wordCount, readingTime, formatDate } from '../../lib/utils';
+import ImageLightbox from './ImageLightbox';
 
 const pageVariants = {
   enter: (direction) => ({
@@ -24,6 +24,7 @@ export default function PageViewer() {
   const { pages, fetchPages } = usePageStore();
   const { activeFolderId, setActivePage, bookViewPageIndex, setBookViewPageIndex } = useUIStore();
   const [direction, setDirection] = useState(0);
+  const [lightboxImg, setLightboxImg] = useState(null);
 
   useEffect(() => {
     if (activeFolderId) fetchPages(activeFolderId);
@@ -47,29 +48,29 @@ export default function PageViewer() {
   );
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Page nav controls */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900">
+    <div className="flex flex-col h-full bg-paper-50 dark:bg-ink-900">
+      {/* Page navigation controls */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-paper-200 dark:border-ink-800 bg-white/80 dark:bg-ink-900/80 backdrop-blur-sm z-10">
         <button
           onClick={prev}
           disabled={bookViewPageIndex === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-30 transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-ink-600 dark:text-paper-300 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-30 transition"
         >
           <ChevronLeft size={15} /> Previous
         </button>
-        <span className="text-sm text-ink-400 dark:text-ink-500">
+        <span className="text-xs font-medium text-ink-400 dark:text-ink-500 uppercase tracking-wider">
           Page {bookViewPageIndex + 1} of {total}
         </span>
         <button
           onClick={next}
           disabled={bookViewPageIndex === total - 1}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-ink-500 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-30 transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm text-ink-600 dark:text-paper-300 hover:bg-paper-100 dark:hover:bg-ink-800 disabled:opacity-30 transition"
         >
           Next <ChevronRight size={15} />
         </button>
       </div>
 
-      {/* Page content with animation */}
+      {/* Page reader area */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence custom={direction} mode="wait">
           {currentPage && (
@@ -83,59 +84,75 @@ export default function PageViewer() {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="absolute inset-0 overflow-y-auto"
             >
-              <div className="max-w-2xl mx-auto px-8 py-10">
-                {/* Paper shadow effect */}
-                <div className="bg-white dark:bg-ink-900 rounded-2xl shadow-page p-8 min-h-[60vh] border border-paper-200 dark:border-ink-800">
-                  {/* Page header */}
-                  <div className="flex items-start justify-between mb-6">
+              <div className="max-w-3xl mx-auto px-6 py-10">
+                <article className="bg-white dark:bg-ink-800/90 rounded-3xl shadow-page p-8 sm:p-12 border border-paper-200 dark:border-ink-700 min-h-[70vh]">
+                  {/* Article Header */}
+                  <div className="flex items-start justify-between gap-4 mb-8 pb-6 border-b border-paper-200 dark:border-ink-700">
                     <div>
-                      <h1 className="text-3xl font-serif font-bold text-ink-800 dark:text-paper-100 mb-2">
+                      <h1 className="text-3xl sm:text-4xl font-serif font-bold text-ink-900 dark:text-paper-100 leading-tight mb-3">
                         {currentPage.title}
                       </h1>
-                      <div className="flex items-center gap-3 text-xs text-ink-300 dark:text-ink-600">
+                      <div className="flex items-center gap-3 text-xs text-ink-400 dark:text-ink-500">
                         <span>{formatDate(currentPage.updatedAt)}</span>
-                        <span>·</span>
+                        <span>&middot;</span>
                         <span>{readingTime(wordCount(currentPage.contentJSON))}</span>
+                        <span>&middot;</span>
+                        <span>{wordCount(currentPage.contentJSON)} words</span>
                       </div>
                     </div>
                     <button
                       onClick={() => setActivePage(currentPage.id)}
-                      className="p-2 hover:bg-paper-100 dark:hover:bg-ink-800 rounded-xl transition text-ink-400"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-paper-100 dark:bg-ink-700 hover:bg-paper-200 dark:hover:bg-ink-600 text-ink-700 dark:text-paper-200 rounded-xl text-xs font-medium transition"
+                      title="Edit this note"
                     >
-                      <Edit3 size={16} />
+                      <Edit3 size={14} /> Edit
                     </button>
                   </div>
 
                   {/* Tags */}
                   {currentPage.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-6">
+                    <div className="flex flex-wrap gap-1.5 mb-8">
                       {currentPage.tags.map(tag => (
-                        <span key={tag} className="px-2 py-0.5 bg-paper-100 dark:bg-ink-800 rounded-full text-xs text-ink-400">{tag}</span>
+                        <span key={tag} className="px-2.5 py-1 bg-paper-100 dark:bg-ink-700 rounded-lg text-xs font-medium text-ink-600 dark:text-paper-300">
+                          #{tag}
+                        </span>
                       ))}
                     </div>
                   )}
 
-                  {/* Content rendered */}
-                  <div className="tiptap-editor prose max-w-none">
-                    <RenderContent contentJSON={currentPage.contentJSON} />
+                  {/* GeeksforGeeks Document Content */}
+                  <div className="tiptap-editor">
+                    <RenderContent
+                      contentJSON={currentPage.contentJSON}
+                      onImageClick={(src, alt) => setLightboxImg({ src, alt })}
+                    />
                   </div>
-                </div>
+                </article>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Dots navigation */}
+      {/* Lightbox */}
+      {lightboxImg && (
+        <ImageLightbox
+          src={lightboxImg.src}
+          alt={lightboxImg.alt}
+          onClose={() => setLightboxImg(null)}
+        />
+      )}
+
+      {/* Bottom Dots pagination */}
       {total > 1 && (
-        <div className="flex items-center justify-center gap-1.5 py-3 border-t border-paper-200 dark:border-ink-800">
+        <div className="flex items-center justify-center gap-1.5 py-3 border-t border-paper-200 dark:border-ink-800 bg-white/60 dark:bg-ink-900/60">
           {pages.map((_, i) => (
             <button
               key={i}
               onClick={() => goTo(i)}
               className={`rounded-full transition-all ${
                 i === bookViewPageIndex
-                  ? 'w-5 h-2 bg-ink-700 dark:bg-paper-300'
+                  ? 'w-6 h-2 bg-ink-800 dark:bg-paper-200'
                   : 'w-2 h-2 bg-paper-300 dark:bg-ink-700 hover:bg-ink-400'
               }`}
             />
@@ -146,28 +163,113 @@ export default function PageViewer() {
   );
 }
 
-function RenderContent({ contentJSON }) {
+// Code Block with 1-Click Copy Button
+function CodeBlock({ codeText }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(codeText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group my-6 rounded-2xl overflow-hidden shadow-page border border-ink-800">
+      <div className="flex items-center justify-between px-4 py-2 bg-ink-950 text-ink-400 text-xs font-mono border-b border-ink-800">
+        <span className="text-[11px] font-semibold text-emerald-400">Code Snippet</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 hover:text-white transition px-2 py-0.5 rounded-md hover:bg-white/10"
+        >
+          {copied ? (
+            <>
+              <Check size={12} className="text-emerald-400" />
+              <span className="text-emerald-400">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={12} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="p-4 bg-ink-900 text-paper-100 text-[13px] font-mono overflow-x-auto m-0">
+        <code>{codeText}</code>
+      </pre>
+    </div>
+  );
+}
+
+function RenderContent({ contentJSON, onImageClick }) {
   const renderNode = (node, index) => {
     if (!node) return null;
     switch (node.type) {
-      case 'doc': return <>{(node.content || []).map((n, i) => renderNode(n, i))}</>;
-      case 'paragraph': return <p key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</p>;
+      case 'doc':
+        return <React.Fragment key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</React.Fragment>;
+      case 'paragraph':
+        return <p key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</p>;
       case 'heading': {
         const Tag = `h${node.attrs?.level || 1}`;
         return <Tag key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</Tag>;
       }
-      case 'bulletList': return <ul key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</ul>;
-      case 'orderedList': return <ol key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</ol>;
-      case 'listItem': return <li key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</li>;
-      case 'blockquote': return <blockquote key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</blockquote>;
-      case 'codeBlock': return <pre key={index}><code>{(node.content || []).map((n, i) => renderNode(n, i))}</code></pre>;
-      case 'taskList': return <ul key={index} data-type="taskList">{(node.content || []).map((n, i) => renderNode(n, i))}</ul>;
-      case 'taskItem': return (
-        <li key={index} data-type="taskItem" data-checked={node.attrs?.checked}>
-          <label><input type="checkbox" defaultChecked={node.attrs?.checked} readOnly /></label>
-          <div>{(node.content || []).map((n, i) => renderNode(n, i))}</div>
-        </li>
-      );
+      case 'bulletList':
+        return <ul key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</ul>;
+      case 'orderedList':
+        return <ol key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</ol>;
+      case 'listItem':
+        return <li key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</li>;
+      case 'blockquote':
+        return (
+          <blockquote key={index} className="gfg-callout">
+            {(node.content || []).map((n, i) => renderNode(n, i))}
+          </blockquote>
+        );
+      case 'codeBlock': {
+        const rawCode = (node.content || []).map(n => n.text || '').join('');
+        return <CodeBlock key={index} codeText={rawCode} />;
+      }
+      case 'taskList':
+        return <ul key={index} data-type="taskList">{(node.content || []).map((n, i) => renderNode(n, i))}</ul>;
+      case 'taskItem':
+        return (
+          <li key={index} data-type="taskItem" data-checked={node.attrs?.checked}>
+            <label><input type="checkbox" defaultChecked={node.attrs?.checked} readOnly /></label>
+            <div>{(node.content || []).map((n, i) => renderNode(n, i))}</div>
+          </li>
+        );
+      case 'table':
+        return (
+          <div key={index} className="overflow-x-auto my-6">
+            <table className="gfg-table w-full border-collapse">
+              <tbody>
+                {(node.content || []).map((n, i) => renderNode(n, i))}
+              </tbody>
+            </table>
+          </div>
+        );
+      case 'tableRow':
+        return <tr key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</tr>;
+      case 'tableHeader':
+        return (
+          <th
+            key={index}
+            colSpan={node.attrs?.colspan || 1}
+            rowSpan={node.attrs?.rowspan || 1}
+          >
+            {(node.content || []).map((n, i) => renderNode(n, i))}
+          </th>
+        );
+      case 'tableCell':
+        return (
+          <td
+            key={index}
+            colSpan={node.attrs?.colspan || 1}
+            rowSpan={node.attrs?.rowspan || 1}
+          >
+            {(node.content || []).map((n, i) => renderNode(n, i))}
+          </td>
+        );
       case 'text': {
         let content = node.text;
         if (node.marks) {
@@ -181,9 +283,24 @@ function RenderContent({ contentJSON }) {
         }
         return <React.Fragment key={index}>{content}</React.Fragment>;
       }
-      case 'hardBreak': return <br key={index} />;
-      case 'image': return <img key={index} src={node.attrs?.src} alt={node.attrs?.alt || ''} />;
-      default: return <React.Fragment key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</React.Fragment>;
+      case 'hardBreak':
+        return <br key={index} />;
+      case 'image':
+        return (
+          <div key={index} className="my-6">
+            <img
+              src={node.attrs?.src}
+              alt={node.attrs?.alt || 'Note illustration'}
+              className="rounded-2xl max-w-full shadow-page cursor-zoom-in border border-paper-200 dark:border-ink-700"
+              onClick={() => onImageClick?.(node.attrs?.src, node.attrs?.alt)}
+            />
+            {node.attrs?.alt && (
+              <p className="text-center text-xs text-ink-400 mt-2 font-mono">{node.attrs.alt}</p>
+            )}
+          </div>
+        );
+      default:
+        return <React.Fragment key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</React.Fragment>;
     }
   };
 

@@ -1,4 +1,4 @@
-﻿import { createServerClient } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function updateSession(request) {
@@ -9,7 +9,6 @@ export async function updateSession(request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-  // If credentials are placeholders, skip redirect to allow previewing
   if (!supabaseUrl || supabaseUrl.includes('demo-project')) {
     return supabaseResponse;
   }
@@ -35,9 +34,13 @@ export async function updateSession(request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isLoginPage = request.nextUrl.pathname.startsWith('/login');
+  const pathname = request.nextUrl.pathname;
+  const isLoginPage = pathname.startsWith('/login');
+  const isAuthRoute = pathname.startsWith('/auth');
+  const isApiRoute = pathname.startsWith('/api');
 
-  if (!user && !isLoginPage && !request.nextUrl.pathname.startsWith('/auth')) {
+  // Do not redirect API routes to HTML login pages
+  if (!user && !isLoginPage && !isAuthRoute && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
