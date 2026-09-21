@@ -1,39 +1,31 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
-import Highlight from '@tiptap/extension-highlight';
-import Underline from '@tiptap/extension-underline';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import { marked } from 'marked';
+import React, { useState } from 'react';
+import { EditorContent } from '@tiptap/react';
+import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  ArrowLeft, Star, Tag, Palette, Download, Cloud,
+  Loader2, Sparkles, Undo2, Check, AlertCircle, CheckCircle2,
+  X, Edit3, ChevronLeft, ChevronRight, Plus, Trash2
+} from 'lucide-react';
+
 import usePageStore from '../../store/usePageStore';
 import useUIStore from '../../store/useUIStore';
-import useBookStore from '../../store/useBookStore';
-import useFolderStore from '../../store/useFolderStore';
 import useAuthStore from '../../store/useAuthStore';
-import { uploadPageImage } from '../../lib/supabase/storage';
-import { wordCount, readingTime, PAGE_COLORS, formatDate, cn } from '../../lib/utils';
-import { pageToMarkdown, nodeToMarkdown } from '../../lib/markdownExport';
+import { readingTime, PAGE_COLORS, formatDate, cn } from '../../lib/utils';
+import { pageToMarkdown } from '../../lib/markdownExport';
+
+import usePageAutosave from '../../hooks/usePageAutosave';
+import usePageImages from '../../hooks/usePageImages';
+import useTiptapEditor from '../../hooks/useTiptapEditor';
+import usePageAI from '../../hooks/usePageAI';
+
+import EditorToolbar from './EditorToolbar';
 import ImageLightbox from './ImageLightbox';
 import SideMediaRail from './SideMediaRail';
 import AISuggestionCard from './AISuggestionCard';
-import { AnimatePresence, motion } from 'framer-motion';
 import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
-import { useRouter } from 'next/navigation';
-import {
-  Bold, Italic, Underline as UnderlineIcon, Highlighter, Heading1, Heading2, Heading3,
-  List, ListOrdered, CheckSquare, Code, Quote, ArrowLeft, Star, Tag, Palette,
-  Download, Cloud, Loader2, Sparkles, Undo2, Check, AlertCircle, CheckCircle2, X,
-  Edit3, Eye, Copy, Table as TableIcon, ChevronLeft, ChevronRight, Plus, Trash2
-} from 'lucide-react';
 
 export default function PageEditor() {
   const router = useRouter();
@@ -43,10 +35,106 @@ export default function PageEditor() {
 
   const page = [...pages, ...bookPages].find(p => p.id === activePageId);
 
-  // Dual View vs Edit Mode
-  const [isEditing, setIsEditing] = useState(false);
+  // In-app Toast Notification state
+  const [toast, setToast] = useState(null);
+  const showToast = (type, message, detail = '') => {
+    setToast({ type, message, detail });
+    setTimeout(() => {
+      setToast(prev => (prev?.message === message ? null : prev));
+    }, 7000);
+  };
 
-  // Topic / Folder Multi-Page Navigation
+  const [deletePageModalOpen, setDeletePageModalOpen] = useState(false);
+
+  // 1. Autosave & Metadata Hook
+  const {
+    title,
+    setTitle,
+    tags,
+    tagInput,
+    setTagInput,
+    color,
+    colorPickerOpen,
+    setColorPickerOpen,
+    starred,
+    triggerSave,
+    handleTitleChange,
+    addTag,
+    removeTag,
+    handleColorChange,
+    handleStarToggle,
+  } = usePageAutosave({
+    page,
+    activeBookId,
+    activeFolderId,
+    savePage,
+  });
+
+  // 2. Image Upload & Lightbox Hook
+  const {
+    uploadedImages,
+    setUploadedImages,
+    uploadingImage,
+    lightboxImg,
+    setLightboxImg,
+    mediaRailOpen,
+    setMediaRailOpen,
+    handleImageFile,
+    handleDeleteImage,
+  } = usePageImages({
+    user,
+    activeBookId,
+    showToast,
+  });
+
+  // 3. Tiptap Editor Hook
+  const {
+    editor,
+    isEditing,
+    setIsEditing,
+    handleEditorContainerClick,
+    wc,
+  } = useTiptapEditor({
+    page,
+    triggerSave,
+    metadata: { tags, title, color, starred },
+    onImagesUpdated: setUploadedImages,
+    onImageUploaded: (file) => handleImageFile(file, editor),
+    onImageClicked: setLightboxImg,
+  });
+
+  // 4. AI Formatting Hook
+  const {
+    aiFormatting,
+    undoBackup,
+    setUndoBackup,
+    aiSuggestions,
+    setAiSuggestions,
+    handleAIFormat,
+    handleKeepSuggestion,
+    handleDiscardSuggestion,
+    handleUndoAI,
+  } = usePageAI({
+    editor,
+    title,
+    setTitle,
+    tags,
+    color,
+    starred,
+    pageId: activePageId,
+    bookId: activeBookId,
+    folderId: activeFolderId,
+    savePage,
+    triggerSave,
+    showToast,
+    setUploadedImages,
+  });
+
+  if (!page) {
+    return <div className="flex items-center justify-center h-full text-ink-400">Page not found</div>;
+  }
+
+  // Topic / Folder Multi-Page Navigation calculation
   const currentFolderId = activeFolderId || page?.folderId;
   const topicPages = (currentFolderId
     ? [...pages, ...bookPages].filter(p => p.folderId === currentFolderId)
@@ -54,7 +142,7 @@ export default function PageEditor() {
         ? [...pages, ...bookPages].filter(p => p.bookId === activeBookId)
         : [...pages, ...bookPages])
   ).filter((p, index, self) => index === self.findIndex(t => t.id === p.id));
-  
+
   topicPages.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || (a.createdAt || 0) - (b.createdAt || 0));
 
   const currentPageIndex = topicPages.findIndex(p => p.id === activePageId);
@@ -63,54 +151,6 @@ export default function PageEditor() {
   const hasNextPage = currentPageIndex >= 0 && currentPageIndex < totalTopicPages - 1;
   const prevPageItem = hasPrevPage ? topicPages[currentPageIndex - 1] : null;
   const nextPageItem = hasNextPage ? topicPages[currentPageIndex + 1] : null;
-
-  const [title, setTitle] = useState(page?.title || '');
-  const [tags, setTags] = useState(page?.tags || []);
-  const [tagInput, setTagInput] = useState('');
-  const [color, setColor] = useState(page?.color || null);
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const [starred, setStarred] = useState(page?.starred || false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [deletePageModalOpen, setDeletePageModalOpen] = useState(false);
-
-  // In-app Toast Notification state
-  const [toast, setToast] = useState(null);
-
-  const showToast = (type, message, detail = '') => {
-    setToast({ type, message, detail });
-    setTimeout(() => {
-      setToast(prev => (prev?.message === message ? null : prev));
-    }, 7000);
-  };
-
-  // AI & Suggestions state
-  const [aiFormatting, setAiFormatting] = useState(false);
-  const [undoBackup, setUndoBackup] = useState(null);
-  const [aiSuggestions, setAiSuggestions] = useState([]);
-  const [lightboxImg, setLightboxImg] = useState(null);
-  const [mediaRailOpen, setMediaRailOpen] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState([]);
-
-  const saveTimerRef = useRef(null);
-  const titleTimerRef = useRef(null);
-
-  const triggerSave = useCallback((contentJSON, newTags, newTitle, newColor, newStarred) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      await savePage(
-        activePageId,
-        {
-          contentJSON,
-          tags: newTags,
-          title: newTitle,
-          color: newColor,
-          starred: newStarred,
-        },
-        activeBookId,
-        activeFolderId,
-      );
-    }, 800);
-  }, [activePageId, activeBookId, activeFolderId, savePage]);
 
   const handlePrevPage = () => {
     if (hasPrevPage && prevPageItem) {
@@ -146,420 +186,13 @@ export default function PageEditor() {
     }
   };
 
-  // Extract all images from the Tiptap document
-  const extractImagesFromJSON = (doc) => {
-    const list = [];
-    function walk(node) {
-      if (node.type === 'image' && node.attrs?.src) {
-        list.push({ src: node.attrs.src, alt: node.attrs.alt || '' });
-      }
-      if (node.content) node.content.forEach(walk);
-    }
-    if (doc) walk(doc);
-    return list;
-  };
-
-  const handleImageFile = async (file) => {
-    if (!file) return;
-    setUploadingImage(true);
-    try {
-      const publicUrl = await uploadPageImage(file, user?.id || 'guest', activeBookId || 'general');
-      const newImg = { src: publicUrl, alt: file.name || 'image' };
-      
-      editor.chain().focus().setImage(newImg).run();
-      setUploadedImages(prev => [...prev, newImg]);
-      setMediaRailOpen(true);
-      showToast('success', 'Image uploaded to cloud storage!');
-    } catch (err) {
-      console.error('Failed to upload image:', err);
-      showToast('error', 'Image Upload Failed', 'Please verify the page-images bucket exists.');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({ codeBlock: false }),
-      Highlight,
-      Underline,
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Placeholder.configure({ placeholder: 'Write your notes or paste screenshots...' }),
-      Image.configure({ inline: false, allowBase64: true }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-    ],
-    content: page?.contentJSON ? JSON.parse(page.contentJSON) : undefined,
-    onUpdate: ({ editor: ed }) => {
-      const json = JSON.stringify(ed.getJSON());
-      triggerSave(json, tags, title, color, starred);
-      setUploadedImages(extractImagesFromJSON(ed.getJSON()));
-    },
-    editorProps: {
-      attributes: { class: 'tiptap-editor focus:outline-none min-h-[400px]' },
-      handleClick: (view, pos, event) => {
-        if (event.target.tagName === 'IMG') {
-          setLightboxImg({
-            src: event.target.getAttribute('src'),
-            alt: event.target.getAttribute('alt') || '',
-          });
-          return true;
-        }
-        return false;
-      },
-      handlePaste: (view, event) => {
-        const items = Array.from(event.clipboardData?.items || []);
-        const imageItem = items.find(item => item.type.startsWith('image/'));
-        if (!imageItem) return false;
-        event.preventDefault();
-        const blob = imageItem.getAsFile();
-        handleImageFile(blob);
-        return true;
-      },
-      handleDrop: (view, event) => {
-        const files = Array.from(event.dataTransfer?.files || []);
-        const imageFile = files.find(f => f.type.startsWith('image/'));
-        if (!imageFile) return false;
-        event.preventDefault();
-        handleImageFile(imageFile);
-        return true;
-      },
-    },
-  });
-
-  // Determine initial mode: if empty note, edit mode; if existing content, view mode
-  useEffect(() => {
-    if (!page) return;
-    setTitle(page.title);
-    setTags(page.tags || []);
-    setColor(page.color || null);
-    setStarred(page.starred || false);
-    setUndoBackup(null);
-    setAiSuggestions([]);
-
-    let hasExistingContent = false;
-    if (page.contentJSON) {
-      try {
-        const json = JSON.parse(page.contentJSON);
-        const images = extractImagesFromJSON(json);
-        setUploadedImages(images);
-        
-        // Check if there is meaningful text
-        const textLength = JSON.stringify(json).length;
-        hasExistingContent = textLength > 80 || images.length > 0;
-      } catch (err) {
-        console.error('Error parsing JSON:', err);
-      }
-    }
-
-    // Default to Edit on empty/new page, View on existing page
-    setIsEditing(!hasExistingContent);
-
-    if (editor && page.contentJSON) {
-      try {
-        const json = JSON.parse(page.contentJSON);
-        editor.commands.setContent(json, false);
-      } catch (err) {}
-    } else if (editor) {
-      editor.commands.clearContent();
-    }
-  }, [activePageId, page?.id, page?.contentJSON, editor]);
-
-  useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }, []);
-
-  // Keyboard shortcut: E toggles Edit mode
-  useEffect(() => {
-    const handleKey = (e) => {
-      if ((e.key === 'e' || e.key === 'E') && !isEditing && (e.ctrlKey || e.metaKey || document.activeElement === document.body)) {
-        e.preventDefault();
-        setIsEditing(true);
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isEditing]);
-
-  // Sync editable status with view/edit mode
-  useEffect(() => {
-    if (editor && !editor.isDestroyed) {
-      editor.setEditable(isEditing);
-    }
-  }, [isEditing, editor]);
-
-  if (!page) return <div className="flex items-center justify-center h-full text-ink-400">Page not found</div>;
-
-  // Delete image from document and rail
-  const handleDeleteImage = (srcToDelete) => {
-    if (!editor) return;
-    try {
-      const { state, dispatch } = editor.view;
-      const { tr, doc } = state;
-      const positionsToDelete = [];
-      doc.descendants((node, pos) => {
-        if (node.type.name === 'image' && node.attrs?.src === srcToDelete) {
-          positionsToDelete.unshift({ pos, size: node.nodeSize });
-        }
-      });
-
-      if (positionsToDelete.length > 0) {
-        positionsToDelete.forEach(({ pos, size }) => {
-          tr.delete(pos, pos + size);
-        });
-        dispatch(tr);
-      }
-
-      setUploadedImages(prev => prev.filter(img => img.src !== srcToDelete));
-      const newJSON = JSON.stringify(editor.getJSON());
-      triggerSave(newJSON, tags, title, color, starred);
-      showToast('success', 'Image removed from note');
-    } catch (err) {
-      console.error('Failed to delete image:', err);
-      showToast('error', 'Could not delete image', err.message);
-    }
-  };
-
-  // Freeform click-anywhere: if clicking in blank space below content, auto-insert blank lines down to cursor
-  const handleEditorContainerClick = (e) => {
-    if (!editor || !isEditing) return;
-
-    const target = e.target;
-    // Don't interfere with buttons, inputs, images, or links
-    if (target.closest('button') || target.closest('input') || target.tagName === 'IMG' || target.tagName === 'A') {
-      return;
-    }
-
-    const editorDom = editor.view?.dom;
-    if (!editorDom) return;
-
-    const clickY = e.clientY;
-    const lastChild = editorDom.lastElementChild;
-
-    if (lastChild) {
-      const lastChildRect = lastChild.getBoundingClientRect();
-      // If clicking below the last child element in the editor's empty space
-      if (clickY > lastChildRect.bottom + 8) {
-        const distance = clickY - lastChildRect.bottom;
-        const lineHeight = 36; // 36px line height
-        const linesToInsert = Math.max(1, Math.min(25, Math.floor(distance / lineHeight)));
-
-        const emptyParagraphs = Array(linesToInsert).fill({ type: 'paragraph' });
-        editor.chain().focus('end').insertContent(emptyParagraphs).focus('end').run();
-        return;
-      }
-    }
-
-    if (!editor.isFocused) {
-      editor.commands.focus();
-    }
-  };
-
-  // AI Formatting Action (Strict Fidelity + Tables + Granular Suggestions)
-  const handleAIFormat = async () => {
-    if (!editor) return;
-    setAiFormatting(true);
-
-    let backupJSON = null;
-    try {
-      backupJSON = editor.getJSON();
-      const rawText = editor.getText();
-      const markdownContent = nodeToMarkdown(backupJSON);
-      const images = extractImagesFromJSON(backupJSON);
-
-      if (!rawText.trim() && images.length === 0) {
-        showToast('error', 'Cannot format empty note', 'Please write some notes or paste screenshots first.');
-        setAiFormatting(false);
-        return;
-      }
-
-      setUndoBackup(backupJSON);
-
-      const res = await fetch('/api/ai/format', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          rawText: markdownContent || rawText,
-          images,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to format with AI');
-      }
-
-      const { generatedTitle, formattedUserContent, suggestions } = data;
-
-      if (!formattedUserContent || !formattedUserContent.trim()) {
-        throw new Error('AI returned empty content. Your original note was kept intact.');
-      }
-
-      // Auto-set title if page is untitled
-      let currentTitle = title;
-      if (generatedTitle && (!title || title === 'Untitled Page' || title === 'Untitled Note' || !title.trim())) {
-        setTitle(generatedTitle);
-        currentTitle = generatedTitle;
-      }
-
-      // SAFETY: If the AI accidentally returned raw JSON as content, reject it
-      const trimmedContent = formattedUserContent.trim();
-      if (trimmedContent.startsWith('{') && trimmedContent.includes('"formattedUserContent"')) {
-        throw new Error('AI returned malformed response. Your original note was kept intact.');
-      }
-
-      // Convert Markdown to clean HTML using marked
-      let parsedHTML = marked.parse(formattedUserContent);
-      if (!parsedHTML || !parsedHTML.trim()) {
-        throw new Error('Markdown parser produced empty output. Your original note was kept intact.');
-      }
-
-      // CRITICAL: Tiptap Table extension does NOT understand <thead>/<tbody>/<tfoot>.
-      // Strip them so Tiptap sees <table> → <tr> → <th>/<td> directly.
-      parsedHTML = parsedHTML
-        .replace(/<thead>/gi, '')
-        .replace(/<\/thead>/gi, '')
-        .replace(/<tbody>/gi, '')
-        .replace(/<\/tbody>/gi, '')
-        .replace(/<tfoot>/gi, '')
-        .replace(/<\/tfoot>/gi, '');
-
-      // Atomically set content into Tiptap
-      editor.commands.setContent(parsedHTML);
-
-      // Safety check: verify content was not lost
-      const updatedText = editor.getText();
-      if (!updatedText.trim() && rawText.trim().length > 0) {
-        editor.commands.setContent(backupJSON);
-        throw new Error('Formatting resulted in empty content. Reverted safely to your original note.');
-      }
-
-      const newJSON = JSON.stringify(editor.getJSON());
-      triggerSave(newJSON, tags, currentTitle, color, starred);
-      savePage(
-        activePageId,
-        {
-          contentJSON: newJSON,
-          tags,
-          title: currentTitle,
-          color,
-          starred,
-        },
-        activeBookId,
-        activeFolderId,
-      );
-      setUploadedImages(extractImagesFromJSON(editor.getJSON()));
-
-      // Store AI suggestion cards separately for individual Keep/Discard
-      if (suggestions && suggestions.length > 0) {
-        setAiSuggestions(suggestions);
-      }
-      showToast('success', currentTitle !== title ? `Title set to "${currentTitle}" & notes formatted!` : 'Note formatted cleanly with original content intact!');
-    } catch (err) {
-      console.error('AI Format Error:', err);
-      if (backupJSON && editor) {
-        try {
-          editor.commands.setContent(backupJSON);
-        } catch (revertErr) {
-          console.error('Revert error:', revertErr);
-        }
-      }
-      showToast('error', 'AI Formatting Error', err.message || 'Original note was kept intact.');
-    } finally {
-      setAiFormatting(false);
-    }
-  };
-
-  // Granular Keep Suggestion
-  const handleKeepSuggestion = (suggestion) => {
-    if (!editor) return;
-    
-    // Append suggestion to current editor content
-    if (suggestion.type === 'code') {
-      const cleanCode = suggestion.content.replace(/^```[a-z]*\n?/, '').replace(/```$/, '');
-      editor.chain().focus().insertContent([
-        { type: 'paragraph', content: [{ type: 'text', marks: [{ type: 'code' }], text: cleanCode }] }
-      ]).run();
-    } else {
-      editor.chain().focus().insertContent([
-        {
-          type: 'blockquote',
-          content: [{ type: 'paragraph', content: [{ type: 'text', text: `${suggestion.title}: ${suggestion.content}` }] }]
-        }
-      ]).run();
-    }
-
-    // Remove from active suggestions list
-    setAiSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
-    showToast('success', `Added "${suggestion.title}" to note!`);
-  };
-
-  // Discard Suggestion
-  const handleDiscardSuggestion = (suggestionId) => {
-    setAiSuggestions(prev => prev.filter(s => s.id !== suggestionId));
-  };
-
-  const handleUndoAI = () => {
-    if (undoBackup && editor) {
-      editor.commands.setContent(undoBackup);
-      setUndoBackup(null);
-      setAiSuggestions([]);
-      triggerSave(JSON.stringify(undoBackup), tags, title, color, starred);
-      showToast('success', 'Reverted back to your original note.');
-    }
-  };
-
-  const handleTitleChange = (e) => {
-    const newTitle = e.target.value;
-    setTitle(newTitle);
-    if (titleTimerRef.current) clearTimeout(titleTimerRef.current);
-    titleTimerRef.current = setTimeout(() => {
-      const json = editor ? JSON.stringify(editor.getJSON()) : page.contentJSON;
-      triggerSave(json, tags, newTitle, color, starred);
-    }, 800);
-  };
-
-  const addTag = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const tag = tagInput.trim().replace(/,$/, '');
-      if (tag && !tags.includes(tag)) {
-        const newTags = [...tags, tag];
-        setTags(newTags);
-        setTagInput('');
-        const json = editor ? JSON.stringify(editor.getJSON()) : page.contentJSON;
-        triggerSave(json, newTags, title, color, starred);
-      }
-    }
-  };
-
-  const removeTag = (tag) => {
-    const newTags = tags.filter(t => t !== tag);
-    setTags(newTags);
-    const json = editor ? JSON.stringify(editor.getJSON()) : page.contentJSON;
-    triggerSave(json, newTags, title, color, starred);
-  };
-
-  const handleColorChange = (c) => {
-    setColor(c);
-    setColorPickerOpen(false);
-    const json = editor ? JSON.stringify(editor.getJSON()) : page.contentJSON;
-    triggerSave(json, tags, title, c, starred);
-  };
-
-  const handleStarToggle = () => {
-    const newStarred = !starred;
-    setStarred(newStarred);
-    const json = editor ? JSON.stringify(editor.getJSON()) : page.contentJSON;
-    triggerSave(json, tags, title, color, newStarred);
-  };
-
   const handleMarkdownExport = () => {
-    const md = pageToMarkdown({ ...page, title, tags, contentJSON: editor ? JSON.stringify(editor.getJSON()) : page.contentJSON });
+    const md = pageToMarkdown({
+      ...page,
+      title,
+      tags,
+      contentJSON: editor ? JSON.stringify(editor.getJSON()) : page.contentJSON,
+    });
     const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -568,25 +201,6 @@ export default function PageEditor() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const wc = editor ? wordCount(JSON.stringify(editor.getJSON())) : 0;
-
-  const ToolbarBtn = ({ onClick, active, title: t, children }) => (
-    <button
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      title={t}
-      className={cn(
-        'p-1.5 rounded-lg transition-colors',
-        active
-          ? 'bg-ink-800 text-white dark:bg-paper-200 dark:text-ink-900'
-          : 'text-ink-500 dark:text-ink-400 hover:bg-paper-100 dark:hover:bg-ink-800'
-      )}
-    >
-      {children}
-    </button>
-  );
-
-  const Divider = () => <div className="w-px h-4 bg-paper-200 dark:bg-ink-700 mx-1" />;
 
   return (
     <div
@@ -757,10 +371,14 @@ export default function PageEditor() {
             </span>
           )}
 
-          <button onClick={handleStarToggle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition" title="Star this page">
+          <button
+            onClick={() => handleStarToggle(() => editor ? JSON.stringify(editor.getJSON()) : page.contentJSON)}
+            className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition"
+            title="Star this page"
+          >
             <Star size={16} className={cn(starred ? 'fill-amber-400 text-amber-400' : 'text-ink-300')} />
           </button>
-          
+
           <div className="relative">
             <button
               onClick={() => setColorPickerOpen(v => !v)}
@@ -774,7 +392,7 @@ export default function PageEditor() {
                 {PAGE_COLORS.map((c, i) => (
                   <button
                     key={i}
-                    onClick={() => handleColorChange(c)}
+                    onClick={() => handleColorChange(c, () => editor ? JSON.stringify(editor.getJSON()) : page.contentJSON)}
                     className={cn(
                       'w-6 h-6 rounded-lg border-2 transition-transform hover:scale-110',
                       color === c ? 'border-ink-600' : 'border-transparent'
@@ -802,102 +420,7 @@ export default function PageEditor() {
       </div>
 
       {/* Editor Formatting Toolbar (ONLY VISIBLE IN EDIT MODE) */}
-      {isEditing && editor && (
-        <div className="flex items-center flex-wrap gap-0.5 px-6 sm:px-10 py-2 border-b border-paper-200 dark:border-ink-800 bg-white/70 dark:bg-ink-900/70 backdrop-blur-sm sticky top-0 z-10">
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
-            <Bold size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic">
-            <Italic size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline">
-            <UnderlineIcon size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
-            <Highlighter size={14} />
-          </ToolbarBtn>
-          <Divider />
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="H1">
-            <Heading1 size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="H2">
-            <Heading2 size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="H3">
-            <Heading3 size={14} />
-          </ToolbarBtn>
-          <Divider />
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
-            <List size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered list">
-            <ListOrdered size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Task list">
-            <CheckSquare size={14} />
-          </ToolbarBtn>
-          <Divider />
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline code">
-            <Code size={14} />
-          </ToolbarBtn>
-          <ToolbarBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Definition / Callout Box">
-            <Quote size={14} />
-          </ToolbarBtn>
-          <Divider />
-          <ToolbarBtn
-            onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-            active={editor.isActive('table')}
-            title="Insert Table (3x3)"
-          >
-            <TableIcon size={14} />
-          </ToolbarBtn>
-
-          {editor.isActive('table') && (
-            <div className="flex items-center gap-1 pl-2 border-l border-paper-300 dark:border-ink-700">
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addRowAfter().run(); }}
-                className="px-2 py-0.5 rounded bg-paper-200 dark:bg-ink-800 hover:bg-paper-300 text-ink-700 dark:text-paper-200 text-[11px] font-medium transition"
-                title="Add row below"
-              >
-                + Row
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteRow().run(); }}
-                className="px-2 py-0.5 rounded bg-paper-200 dark:bg-ink-800 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 text-[11px] font-medium transition"
-                title="Delete row"
-              >
-                - Row
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().addColumnAfter().run(); }}
-                className="px-2 py-0.5 rounded bg-paper-200 dark:bg-ink-800 hover:bg-paper-300 text-ink-700 dark:text-paper-200 text-[11px] font-medium transition"
-                title="Add column right"
-              >
-                + Col
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteColumn().run(); }}
-                className="px-2 py-0.5 rounded bg-paper-200 dark:bg-ink-800 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 text-[11px] font-medium transition"
-                title="Delete column"
-              >
-                - Col
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().deleteTable().run(); }}
-                className="px-2 py-0.5 rounded bg-red-100 dark:bg-red-950/60 hover:bg-red-200 text-red-600 text-[11px] font-medium transition"
-                title="Delete table"
-              >
-                Del Table
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {isEditing && <EditorToolbar editor={editor} />}
 
       {/* Main Document Body */}
       <div className="flex-1 overflow-y-auto">
@@ -906,14 +429,14 @@ export default function PageEditor() {
             ? 'max-w-4xl px-6 sm:px-12 py-8 text-left'
             : 'notebook-page'
         )}>
-          
-          {/* Notebook Page Header (Clean, Authentic Student Notebook Style) */}
+
+          {/* Notebook Page Header */}
           {isEditing ? (
             <div className="mb-4 pb-2 border-b border-paper-200 dark:border-ink-700">
               <input
                 type="text"
                 value={title}
-                onChange={handleTitleChange}
+                onChange={(e) => handleTitleChange(e, () => editor ? JSON.stringify(editor.getJSON()) : page.contentJSON)}
                 placeholder="Page title (optional)..."
                 className="w-full text-2xl sm:text-3xl font-serif font-bold text-ink-900 dark:text-paper-100 bg-transparent placeholder-ink-300 focus:outline-none tracking-tight"
               />
@@ -935,7 +458,7 @@ export default function PageEditor() {
                 </span>
               </div>
 
-              {/* Show title ONLY if custom named (no 'Untitled Page' clutter) */}
+              {/* Show title ONLY if custom named */}
               {title && title !== 'Untitled Page' && title !== 'Untitled Note' && title.trim() !== '' && (
                 <h1
                   onDoubleClick={() => setIsEditing(true)}
@@ -958,7 +481,7 @@ export default function PageEditor() {
               >
                 #{tag}
                 {isEditing && (
-                  <button onClick={() => removeTag(tag)} className="hover:text-red-400 transition">&times;</button>
+                  <button onClick={() => removeTag(tag, () => editor ? JSON.stringify(editor.getJSON()) : page.contentJSON)} className="hover:text-red-400 transition">&times;</button>
                 )}
               </span>
             ))}
@@ -967,7 +490,7 @@ export default function PageEditor() {
                 type="text"
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
-                onKeyDown={addTag}
+                onKeyDown={(e) => addTag(e, () => editor ? JSON.stringify(editor.getJSON()) : page.contentJSON)}
                 placeholder="Add tag, Enter"
                 className="min-w-[100px] text-xs bg-transparent focus:outline-none text-ink-500 placeholder-ink-300"
               />
@@ -1051,7 +574,7 @@ export default function PageEditor() {
         isOpen={mediaRailOpen}
         onToggle={() => setMediaRailOpen(!mediaRailOpen)}
         onImageClick={(src, alt) => setLightboxImg({ src, alt })}
-        onDeleteImage={handleDeleteImage}
+        onDeleteImage={(src) => handleDeleteImage(src, editor, triggerSave, { tags, title, color, starred })}
         onInsertImage={isEditing ? (src, alt) => {
           editor?.chain().focus().setImage({ src, alt }).run();
         } : null}
@@ -1063,7 +586,7 @@ export default function PageEditor() {
           src={lightboxImg.src}
           alt={lightboxImg.alt}
           onClose={() => setLightboxImg(null)}
-          onDelete={handleDeleteImage}
+          onDelete={(src) => handleDeleteImage(src, editor, triggerSave, { tags, title, color, starred })}
         />
       )}
 
