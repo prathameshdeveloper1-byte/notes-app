@@ -8,7 +8,7 @@ import {
   ArrowLeft, Star, Tag, Palette, Download, Cloud,
   Loader2, Sparkles, Undo2, Check, AlertCircle, CheckCircle2,
   X, Edit3, ChevronLeft, ChevronRight, Plus, Trash2,
-  Share2, Minimize2
+  Share2, Minimize2, Save
 } from 'lucide-react';
 
 import usePageStore from '../../store/usePageStore';
@@ -66,7 +66,7 @@ export default function PageEditor() {
 
   const [deletePageModalOpen, setDeletePageModalOpen] = useState(false);
 
-  // 1. Autosave & Metadata Hook
+  // 1. Metadata & Manual Save Hook
   const {
     title,
     setTitle,
@@ -77,6 +77,9 @@ export default function PageEditor() {
     colorPickerOpen,
     setColorPickerOpen,
     starred,
+    isDirty,
+    setIsDirty,
+    saveChanges,
     triggerSave,
     handleTitleChange,
     addTag,
@@ -118,10 +121,34 @@ export default function PageEditor() {
     page,
     triggerSave,
     metadata: { tags, title, color, starred },
+    onContentChange: () => setIsDirty(true),
     onImagesUpdated: setUploadedImages,
     onImageUploaded: (file) => handleImageFile(file, editor),
     onImageClicked: setLightboxImg,
   });
+
+  // Manual save handler (Triggered ONLY by Save button or Ctrl+S)
+  const handleSaveClick = async () => {
+    if (!editor && !page) return;
+    const ok = await saveChanges(() => (editor ? JSON.stringify(editor.getJSON()) : page?.contentJSON));
+    if (ok) {
+      showToast('success', 'Changes saved successfully!');
+    } else {
+      showToast('error', 'Failed to save changes');
+    }
+  };
+
+  // Keyboard shortcut: Ctrl+S to save immediately
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        handleSaveClick();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editor, saveChanges]);
 
   // 4. AI Formatting Hook
   const {
@@ -345,24 +372,51 @@ export default function PageEditor() {
             <Plus size={13} /> Add Page
           </button>
 
-          {/* Live Autosave Status Pill */}
-          <div className="hidden sm:flex items-center ml-1">
-            {saving ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse">
-                <Loader2 size={11} className="animate-spin" /> Saving...
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                <Check size={11} /> Saved
-              </span>
-            )}
+          {/* Manual Save Button (Only saves on click or Ctrl+S, not on stop change) */}
+          <div className="flex items-center ml-1">
+            <button
+              onClick={handleSaveClick}
+              disabled={saving}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-xs active:scale-95',
+                saving
+                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+                  : isDirty
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm ring-2 ring-blue-400/30'
+                  : 'bg-paper-100 hover:bg-paper-200 dark:bg-ink-800 dark:hover:bg-ink-700 text-ink-600 dark:text-paper-300 border border-paper-300 dark:border-ink-700'
+              )}
+              title={isDirty ? 'Click to save your changes (Ctrl+S)' : 'All changes saved (Ctrl+S)'}
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : isDirty ? (
+                <>
+                  <Save size={13} />
+                  <span>Save Changes</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+                </>
+              ) : (
+                <>
+                  <Check size={13} className="text-emerald-500" />
+                  <span>Saved</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {/* View / Edit Mode Toggle Button */}
           <button
-            onClick={() => setIsEditing(!isEditing)}
+            onClick={async () => {
+              if (isEditing && isDirty) {
+                await handleSaveClick();
+              }
+              setIsEditing(!isEditing);
+            }}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm ${
               isEditing
                 ? 'bg-ink-800 text-white dark:bg-paper-200 dark:text-ink-900'
@@ -714,11 +768,16 @@ export default function PageEditor() {
         <span className="flex items-center gap-1">
           {saving ? (
             <span className="text-amber-500 animate-pulse flex items-center gap-1">
-              <Loader2 size={11} className="animate-spin" /> Saving to cloud...
+              <Loader2 size={11} className="animate-spin" /> Saving changes...
+            </span>
+          ) : isDirty ? (
+            <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+              Unsaved changes &middot; Click &ldquo;Save Changes&rdquo; or Ctrl+S
             </span>
           ) : (
-            <span className="text-green-600 dark:text-green-500 flex items-center gap-1">
-              <Cloud size={11} /> Cloud synced
+            <span className="text-emerald-600 dark:text-emerald-500 flex items-center gap-1">
+              <Check size={11} /> All changes saved
             </span>
           )}
         </span>

@@ -23,6 +23,7 @@ export function useTiptapEditor({
   page,
   triggerSave,
   metadata = {},
+  onContentChange,
   onImagesUpdated,
   onImageUploaded,
   onImageClicked,
@@ -32,6 +33,9 @@ export function useTiptapEditor({
   // Keep references to latest metadata and callbacks to prevent stale closures inside Tiptap event handlers
   const metadataRef = useRef(metadata);
   metadataRef.current = metadata;
+
+  const onContentChangeRef = useRef(onContentChange);
+  onContentChangeRef.current = onContentChange;
 
   const onImagesUpdatedRef = useRef(onImagesUpdated);
   onImagesUpdatedRef.current = onImagesUpdated;
@@ -64,10 +68,8 @@ export function useTiptapEditor({
       try { return JSON.parse(page.contentJSON); } catch { return undefined; }
     })() : undefined,
     onUpdate: ({ editor: ed }) => {
-      const json = JSON.stringify(ed.getJSON());
-      const meta = metadataRef.current;
-      if (triggerSaveRef.current) {
-        triggerSaveRef.current(json, meta.tags, meta.title, meta.color, meta.starred);
+      if (onContentChangeRef.current) {
+        onContentChangeRef.current();
       }
       if (onImagesUpdatedRef.current) {
         onImagesUpdatedRef.current(extractImagesFromJSON(ed.getJSON()));
