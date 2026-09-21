@@ -25,10 +25,11 @@ import { cn, formatDate, wordCount, readingTime, extractSnippet } from '../../li
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
+import { PageIndexSkeleton } from '../ui/SkeletonLoaders';
 
 export default function PageIndex() {
   const router = useRouter();
-  const { folders, fetchFolders, removeFolder } = useFolderStore();
+  const { folders, fetchFolders, removeFolder, loading: foldersLoading } = useFolderStore();
   const { bookPages, fetchBookPages, addPage, deletePage } = usePageStore();
   const { books } = useBookStore();
   const { activeBookId, setActiveFolder, setActivePage, setViewMode } = useUIStore();
@@ -73,6 +74,14 @@ export default function PageIndex() {
       console.error('Failed to create page in folder:', err);
     }
   };
+
+  if (foldersLoading && folders.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 sm:px-10 py-10">
+        <PageIndexSkeleton count={6} />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-6 sm:px-10 py-10">

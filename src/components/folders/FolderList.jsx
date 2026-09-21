@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { Plus, FolderOpen } from 'lucide-react';
 
-export default function FolderList() {
+export default function FolderList({ collapsed = false }) {
   const { folders, fetchFolders, reorder } = useFolderStore();
   const { activeBookId, activeFolderId } = useUIStore();
   const [createOpen, setCreateOpen] = useState(false);
@@ -39,21 +39,22 @@ export default function FolderList() {
   };
 
   return (
-    <div className="px-2">
+    <div className={collapsed ? 'px-1' : 'px-2'}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={folders.map(f => f.id)} strategy={verticalListSortingStrategy}>
           {folders.length === 0 ? (
             <div className="py-6 text-center">
-              <FolderOpen size={32} className="mx-auto text-ink-300 dark:text-ink-700 mb-2" />
-              <p className="text-xs text-ink-400">No chapters yet</p>
+              <FolderOpen size={collapsed ? 20 : 32} className="mx-auto text-ink-300 dark:text-ink-700 mb-2" />
+              {!collapsed && <p className="text-xs text-ink-400">No chapters yet</p>}
             </div>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {folders.map(folder => (
                 <FolderItem
                   key={folder.id}
                   folder={folder}
                   isActive={activeFolderId === folder.id}
+                  collapsed={collapsed}
                 />
               ))}
             </div>
@@ -63,10 +64,15 @@ export default function FolderList() {
 
       <button
         onClick={() => setCreateOpen(true)}
-        className="flex items-center justify-center gap-1.5 w-full mt-3 px-3 py-2 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl shadow-xs transition active:scale-[0.98]"
+        className={
+          collapsed
+            ? 'flex items-center justify-center w-full mt-3 p-2 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl shadow-xs transition active:scale-[0.98]'
+            : 'flex items-center justify-center gap-1.5 w-full mt-3 px-3 py-2 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl shadow-xs transition active:scale-[0.98]'
+        }
+        title="Add Chapter"
       >
-        <Plus size={14} />
-        Add Chapter
+        <Plus size={15} />
+        {!collapsed && <span>Add Chapter</span>}
       </button>
 
       <FolderCreateModal open={createOpen} onClose={() => setCreateOpen(false)} />

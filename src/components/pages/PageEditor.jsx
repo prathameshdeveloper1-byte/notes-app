@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EditorContent } from '@tiptap/react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft, Star, Tag, Palette, Download, Cloud,
   Loader2, Sparkles, Undo2, Check, AlertCircle, CheckCircle2,
-  X, Edit3, ChevronLeft, ChevronRight, Plus, Trash2
+  X, Edit3, ChevronLeft, ChevronRight, Plus, Trash2,
+  Share2, Minimize2
 } from 'lucide-react';
 
 import usePageStore from '../../store/usePageStore';
+import useBookStore from '../../store/useBookStore';
 import useUIStore from '../../store/useUIStore';
 import useAuthStore from '../../store/useAuthStore';
 import { readingTime, PAGE_COLORS, formatDate, cn } from '../../lib/utils';
@@ -26,14 +28,32 @@ import ImageLightbox from './ImageLightbox';
 import SideMediaRail from './SideMediaRail';
 import AISuggestionCard from './AISuggestionCard';
 import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
+import ShareModal from './ShareModal';
 
 export default function PageEditor() {
   const router = useRouter();
   const { pages, bookPages, savePage, saving, addPage, deletePage } = usePageStore();
-  const { activePageId, activeBookId, activeFolderId, setActivePage } = useUIStore();
+  const { books } = useBookStore();
+  const {
+    activePageId,
+    activeBookId,
+    activeFolderId,
+    setActivePage,
+    addRecentVisitedPage,
+    focusMode,
+    toggleFocusMode,
+  } = useUIStore();
   const { user } = useAuthStore();
 
   const page = [...pages, ...bookPages].find(p => p.id === activePageId);
+
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (page) {
+      addRecentVisitedPage(page);
+    }
+  }, [page?.id]);
 
   // In-app Toast Notification state
   const [toast, setToast] = useState(null);
@@ -324,6 +344,19 @@ export default function PageEditor() {
           >
             <Plus size={13} /> Add Page
           </button>
+
+          {/* Live Autosave Status Pill */}
+          <div className="hidden sm:flex items-center ml-1">
+            {saving ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse">
+                <Loader2 size={11} className="animate-spin" /> Saving...
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <Check size={11} /> Saved
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -407,6 +440,14 @@ export default function PageEditor() {
 
           <button onClick={handleMarkdownExport} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition" title="Export as Markdown">
             <Download size={16} className="text-ink-400" />
+          </button>
+
+          <button
+            onClick={() => setShareModalOpen(true)}
+            className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-ink-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition"
+            title="Share note (read-only link)"
+          >
+            <Share2 size={16} />
           </button>
 
           <button
@@ -614,6 +655,57 @@ export default function PageEditor() {
           description="Are you sure you want to delete this page? All notes and content on this page will be permanently removed."
           itemType="page"
         />
+      )}
+
+      {/* Share Note Modal */}
+      {shareModalOpen && (
+        <ShareModal
+          open={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          page={page}
+          bookTitle={books.find((b) => b.id === (activeBookId || page?.bookId))?.title}
+        />
+      )}
+
+      {/* Floating Bottom Navigation Bar in Focus Mode */}
+      {focusMode && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-ink-900/90 dark:bg-paper-100/90 text-white dark:text-ink-900 backdrop-blur-md px-4 py-2 rounded-2xl shadow-page flex items-center gap-3 border border-white/10 dark:border-black/10 text-xs select-none"
+        >
+          <button
+            onClick={handlePrevPage}
+            disabled={!hasPrevPage}
+            className="p-1 rounded-lg hover:bg-white/15 dark:hover:bg-black/10 disabled:opacity-30 transition"
+            title="Previous Page"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="font-mono text-[11px] font-medium tracking-wide">
+            Page {currentPageIndex >= 0 ? currentPageIndex + 1 : 1} of {totalTopicPages || 1}
+          </span>
+          <button
+            onClick={handleNextPage}
+            disabled={!hasNextPage}
+            className="p-1 rounded-lg hover:bg-white/15 dark:hover:bg-black/10 disabled:opacity-30 transition"
+            title="Next Page"
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          <div className="h-4 w-px bg-white/20 dark:bg-black/20" />
+
+          <button
+            onClick={toggleFocusMode}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-white/15 dark:hover:bg-black/10 transition font-medium"
+            title="Exit Focus Mode (Esc or Ctrl+Shift+F)"
+          >
+            <Minimize2 size={13} />
+            <span>Exit Focus</span>
+          </button>
+        </motion.div>
       )}
 
       {/* Footer */}

@@ -9,6 +9,7 @@ import useAuthStore from '../../../store/useAuthStore';
 import Sidebar from '../../../components/layout/Sidebar';
 import Topbar from '../../../components/layout/Topbar';
 import SearchBar from '../../../components/search/SearchBar';
+import KeyboardShortcutsModal from '../../../components/ui/KeyboardShortcutsModal';
 
 export default function BookLayout({ children, params }) {
   const { bookId } = params;
@@ -32,7 +33,7 @@ export default function BookLayout({ children, params }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-paper-50 dark:bg-ink-900">
-      <div className="flex flex-1 h-[calc(100vh-2rem)] overflow-hidden">
+      <div className="flex flex-1 h-screen overflow-hidden">
         {!focusMode && <Sidebar />}
 
         <div className="flex flex-col flex-1 overflow-hidden">
@@ -44,6 +45,7 @@ export default function BookLayout({ children, params }) {
         </div>
 
         <SearchBar />
+        <KeyboardShortcutsModal />
       </div>
     </div>
   );

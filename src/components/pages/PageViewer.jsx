@@ -178,7 +178,7 @@ export default function PageViewer() {
 }
 
 // Code Block with 1-Click Copy Button
-function CodeBlock({ codeText }) {
+export function CodeBlock({ codeText }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -215,7 +215,7 @@ function CodeBlock({ codeText }) {
   );
 }
 
-function RenderContent({ contentJSON, onImageClick }) {
+export function RenderContent({ contentJSON, onImageClick }) {
   const renderNode = (node, index) => {
     if (!node) return null;
     switch (node.type) {

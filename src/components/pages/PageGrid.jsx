@@ -6,6 +6,7 @@ import PageCard from './PageCard';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { PageGridSkeleton } from '../ui/SkeletonLoaders';
 
 export default function PageGrid() {
   const router = useRouter();
@@ -22,9 +23,13 @@ export default function PageGrid() {
     router.push(`/books/${activeBookId}/pages/${id}`);
   };
 
-  if (loading && pages.length === 0) return (
-    <div className="flex items-center justify-center h-64 text-ink-300">Loading pages...</div>
-  );
+  if (loading && pages.length === 0) {
+    return (
+      <div className="p-6">
+        <PageGridSkeleton count={8} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

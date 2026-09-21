@@ -6,6 +6,7 @@ import useBookStore from '../store/useBookStore';
 import useAuthStore from '../store/useAuthStore';
 import BookShelf from '../components/books/BookShelf';
 import SearchBar from '../components/search/SearchBar';
+import KeyboardShortcutsModal from '../components/ui/KeyboardShortcutsModal';
 import { KeyRound } from 'lucide-react';
 import Link from 'next/link';
 
@@ -43,6 +44,7 @@ export default function Home() {
       <div className="flex-1 bg-paper-50 dark:bg-ink-900">
         <SearchBar />
         <BookShelf />
+        <KeyboardShortcutsModal />
       </div>
     </div>
   );

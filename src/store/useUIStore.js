@@ -41,13 +41,38 @@ const useUIStore = create(
         activePageId: pageId !== undefined ? pageId : s.activePageId,
       })),
 
+      // Sidebar collapsed state
+      sidebarCollapsed: false,
+      toggleSidebarCollapsed: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+      // Keyboard shortcuts modal
+      shortcutsModalOpen: false,
+      setShortcutsModalOpen: (v) => set({ shortcutsModalOpen: v }),
+
+      // Recently visited pages
+      recentVisitedPages: [],
+      addRecentVisitedPage: (page) => {
+        if (!page || !page.id) return;
+        set((s) => ({
+          recentVisitedPages: [
+            { id: page.id, title: page.title || 'Untitled', bookId: page.bookId, folderId: page.folderId, updatedAt: new Date().toISOString() },
+            ...(s.recentVisitedPages || []).filter((p) => p.id !== page.id),
+          ].slice(0, 10),
+        }));
+      },
+
       // Book view page index
       bookViewPageIndex: 0,
       setBookViewPageIndex: (i) => set({ bookViewPageIndex: i }),
     }),
     {
       name: 'book-notes-ui',
-      partialize: (s) => ({ darkMode: s.darkMode, viewMode: s.viewMode }),
+      partialize: (s) => ({
+        darkMode: s.darkMode,
+        viewMode: s.viewMode,
+        sidebarCollapsed: s.sidebarCollapsed,
+        recentVisitedPages: s.recentVisitedPages,
+      }),
     }
   )
 );

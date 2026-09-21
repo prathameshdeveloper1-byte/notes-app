@@ -1,4 +1,4 @@
-﻿import { createClient } from './client';
+import { createClient } from './client';
 
 const supabase = createClient();
 
@@ -272,3 +272,35 @@ export async function getRecentPages(limit = 5) {
   }
   return (data || []).map(mapPage);
 }
+
+export async function getPublicPage(id) {
+  try {
+    const { data, error } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) return null;
+    const page = mapPage(data);
+
+    if (page.bookId) {
+      const { data: book } = await supabase.from('books').select('title, cover_color').eq('id', page.bookId).single();
+      if (book) {
+        page.bookTitle = book.title;
+        page.coverColor = book.cover_color;
+      }
+    }
+    if (page.folderId) {
+      const { data: folder } = await supabase.from('folders').select('title').eq('id', page.folderId).single();
+      if (folder) {
+        page.folderTitle = folder.title;
+      }
+    }
+    return page;
+  } catch (err) {
+    console.error('getPublicPage error:', err);
+    return null;
+  }
+}
+

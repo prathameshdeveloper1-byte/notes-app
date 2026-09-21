@@ -10,7 +10,7 @@ import { cn } from '../../lib/utils';
 import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
 import { useRouter } from 'next/navigation';
 
-export default function FolderItem({ folder }) {
+export default function FolderItem({ folder, collapsed = false }) {
   const router = useRouter();
   const { renameFolder, removeFolder } = useFolderStore();
   const { activeBookId, activeFolderId, setActiveFolder } = useUIStore();
@@ -53,6 +53,30 @@ export default function FolderItem({ folder }) {
     setEditTitle(folder.title);
     setIsEditing(false);
   };
+
+  if (collapsed) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={cn(
+          'flex items-center justify-center p-2.5 rounded-xl cursor-pointer transition-all border shadow-xs active:scale-95',
+          isActive
+            ? 'bg-amber-100/80 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 font-semibold'
+            : 'bg-white dark:bg-ink-800/60 text-ink-600 dark:text-paper-300 border-paper-200/80 dark:border-ink-700/80 hover:bg-paper-100 dark:hover:bg-ink-700'
+        )}
+        onClick={() => {
+          setActiveFolder(folder.id);
+          router.push(`/books/${activeBookId}/chapters/${folder.id}`);
+        }}
+        title={`Chapter: ${folder.title}`}
+      >
+        <span className="text-xs font-serif font-bold uppercase truncate max-w-[2ch]">
+          {folder.title ? folder.title.charAt(0).toUpperCase() : 'C'}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <>

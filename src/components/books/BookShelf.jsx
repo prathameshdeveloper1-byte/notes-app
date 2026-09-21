@@ -5,9 +5,11 @@ import usePageStore from '../../store/usePageStore';
 import useUIStore from '../../store/useUIStore';
 import BookCard from './BookCard';
 import BookCreateModal from './BookCreateModal';
+import { BookShelfSkeleton } from '../ui/SkeletonLoaders';
 import { motion } from 'framer-motion';
-import { BookOpen, Plus, Clock } from 'lucide-react';
-import { formatDate } from '../../lib/utils';
+import { BookOpen, Plus, Clock, Flame, Sparkles, Loader2 } from 'lucide-react';
+import { formatDate, formatActivityTime, calculateStreak } from '../../lib/utils';
+import { createSampleNotebook } from '../../lib/sampleNotebook';
 import { useRouter } from 'next/navigation';
 
 export default function BookShelf() {
@@ -16,40 +18,82 @@ export default function BookShelf() {
   const { recentPages, fetchRecentPages } = usePageStore();
   const { setActiveBook, setActivePage, setActiveFolder } = useUIStore();
   const [createOpen, setCreateOpen] = useState(false);
+  const [loadingSample, setLoadingSample] = useState(false);
 
   useEffect(() => {
     fetchBooks();
     fetchRecentPages();
   }, []);
 
+  const streak = calculateStreak(recentPages);
+
+  const handleLoadSample = async () => {
+    setLoadingSample(true);
+    try {
+      const { bookId, folderId, pageId } = await createSampleNotebook();
+      await fetchBooks();
+      await fetchRecentPages();
+      setActiveBook(bookId);
+      setActiveFolder(folderId);
+      setActivePage(pageId);
+      router.push(`/books/${bookId}/pages/${pageId}`);
+    } catch (err) {
+      console.error('Failed to load sample notebook:', err);
+    } finally {
+      setLoadingSample(false);
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-4xl font-serif font-bold text-ink-800 dark:text-paper-100">
-            📚 My Book Shelf
-          </h1>
-          <p className="text-ink-400 mt-1">Your personal library of thoughts</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl sm:text-4xl font-serif font-bold text-ink-900 dark:text-paper-100 tracking-tight">
+              📚 My Notebooks
+            </h1>
+            {/* Streak Pill */}
+            {streak > 0 ? (
+              <div
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-2xs"
+                title={`${streak}-day consecutive writing habit`}
+              >
+                <Flame size={14} className="text-amber-500 fill-amber-500 animate-pulse" />
+                <span>{streak}-Day Streak</span>
+              </div>
+            ) : (
+              <div
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-ink-400 dark:text-ink-500 bg-paper-100 dark:bg-ink-800 border border-paper-200 dark:border-ink-700"
+                title="Write a note today to start a streak!"
+              >
+                <span>🌱 Start a Streak</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xs sm:text-sm text-ink-400 dark:text-ink-500 mt-1.5">
+            Your personal digital desk — tactile, organized, distraction-free.
+          </p>
         </div>
+
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-ink-800 dark:bg-paper-200 text-white dark:text-ink-900 rounded-xl font-medium hover:bg-ink-700 dark:hover:bg-paper-300 transition-colors shadow-card"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-ink-900 dark:bg-paper-100 text-white dark:text-ink-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-ink-800 dark:hover:bg-white transition-all shadow-card active:scale-[0.98] self-start sm:self-auto"
         >
-          <Plus size={18} />
-          New Book
+          <Plus size={17} />
+          <span>New Notebook</span>
         </button>
       </div>
 
       {/* Recent pages strip */}
       {recentPages.length > 0 && (
         <div className="mb-10">
-          <div className="flex items-center gap-2 text-sm font-medium text-ink-400 dark:text-ink-500 mb-3">
-            <Clock size={14} />
-            Recently Edited
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-400 dark:text-ink-500 mb-3">
+            <Clock size={13} />
+            <span>Recently Edited</span>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {recentPages.map(page => (
+          <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+            {recentPages.map((page) => (
               <button
                 key={page.id}
                 onClick={() => {
@@ -58,57 +102,74 @@ export default function BookShelf() {
                   setActivePage(page.id);
                   router.push(`/books/${page.bookId}/pages/${page.id}`);
                 }}
-                className="flex-shrink-0 px-4 py-2.5 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-xl text-left hover:border-ink-300 dark:hover:border-ink-500 transition-all shadow-card min-w-[180px]"
+                className="flex-shrink-0 px-4 py-2.5 bg-white dark:bg-ink-850 border border-paper-200 dark:border-ink-750 rounded-xl text-left hover:border-paper-400 dark:hover:border-ink-600 transition-all shadow-card min-w-[200px] group"
               >
-                <p className="font-medium text-sm text-ink-800 dark:text-paper-100 truncate">{page.title}</p>
-                <p className="text-xs text-ink-400 mt-0.5">{formatDate(page.updatedAt)}</p>
+                <p className="font-serif font-semibold text-xs sm:text-sm text-ink-800 dark:text-paper-100 truncate group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
+                  {page.title || 'Untitled Page'}
+                </p>
+                <p className="text-[11px] text-ink-400 font-mono mt-1">
+                  {formatActivityTime(page.updatedAt || page.createdAt)}
+                </p>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Books grid */}
+      {/* Bookshelf Grid or States */}
       {loading ? (
-        <div className="flex items-center justify-center h-40 text-ink-300">Loading...</div>
+        <BookShelfSkeleton count={5} />
       ) : books.length === 0 ? (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center h-64 gap-4"
+          className="flex flex-col items-center justify-center p-12 bg-white dark:bg-ink-850 rounded-2xl border border-paper-200 dark:border-ink-800 shadow-card text-center max-w-lg mx-auto my-12"
         >
-          <BookOpen size={64} className="text-paper-300 dark:text-ink-700" />
-          <p className="text-xl font-serif text-ink-400">No books yet</p>
-          <p className="text-sm text-ink-300">Create your first book to start taking notes</p>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="mt-2 px-5 py-2.5 bg-ink-800 text-white rounded-xl font-medium hover:bg-ink-700 transition-colors"
-          >
-            Create Book
-          </button>
+          <div className="w-16 h-16 rounded-2xl bg-paper-100 dark:bg-ink-750 flex items-center justify-center text-ink-500 dark:text-paper-300 mb-4 shadow-inner">
+            <BookOpen size={30} />
+          </div>
+          <h2 className="text-xl font-serif font-bold text-ink-900 dark:text-paper-100 mb-1">
+            Your Bookshelf is Empty
+          </h2>
+          <p className="text-xs text-ink-400 dark:text-ink-500 mb-6 max-w-sm leading-relaxed">
+            Create your first notebook to organize study notes, ideas, and lectures, or load a sample tour.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="w-full sm:w-auto px-5 py-2.5 bg-ink-900 hover:bg-ink-800 dark:bg-paper-100 dark:hover:bg-white text-white dark:text-ink-900 rounded-xl text-xs font-semibold shadow-xs transition"
+            >
+              Create Blank Notebook
+            </button>
+            <button
+              onClick={handleLoadSample}
+              disabled={loadingSample}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-paper-100 hover:bg-paper-200 dark:bg-ink-750 dark:hover:bg-ink-700 text-ink-700 dark:text-paper-200 border border-paper-300 dark:border-ink-650 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+            >
+              {loadingSample ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Loading Tour...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} className="text-amber-500" /> Load Sample Notebook
+                </>
+              )}
+            </button>
+          </div>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 sm:gap-6">
           {books.map((book, i) => (
             <motion.div
               key={book.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+              transition={{ delay: i * 0.04 }}
             >
               <BookCard book={book} />
             </motion.div>
           ))}
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: books.length * 0.05 }}
-            onClick={() => setCreateOpen(true)}
-            className="aspect-[3/4] rounded-2xl border-2 border-dashed border-paper-300 dark:border-ink-700 flex flex-col items-center justify-center gap-2 text-ink-300 dark:text-ink-600 hover:border-ink-400 dark:hover:border-ink-500 hover:text-ink-500 transition-all"
-          >
-            <Plus size={28} />
-            <span className="text-sm">New Book</span>
-          </motion.button>
         </div>
       )}
 
