@@ -5,8 +5,10 @@ import useUIStore from '../../store/useUIStore';
 import FolderList from '../folders/FolderList';
 import { Home, BookMarked, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function Sidebar() {
+  const router = useRouter();
   const { books } = useBookStore();
   const { activeBookId, activeFolderId, setActiveBook, setActiveFolder } = useUIStore();
 
@@ -23,7 +25,10 @@ export default function Sidebar() {
         style={{ borderLeftWidth: 4, borderLeftColor: accentColor }}
       >
         <button
-          onClick={() => setActiveBook(null)}
+          onClick={() => {
+            setActiveBook(null);
+            router.push('/');
+          }}
           className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-ink-800 hover:bg-paper-100 dark:hover:bg-ink-700 text-ink-700 dark:text-paper-200 text-xs font-semibold transition border border-paper-200 dark:border-ink-700 shadow-xs mb-2.5 active:scale-95"
           title="Return to bookshelf"
         >
@@ -45,7 +50,10 @@ export default function Sidebar() {
       {/* Table of Contents Button */}
       <div className="p-2.5 pb-1">
         <button
-          onClick={() => setActiveFolder(null)}
+          onClick={() => {
+            setActiveFolder(null);
+            router.push(`/books/${activeBookId}`);
+          }}
           className={cn(
             'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-xs font-semibold transition-all border shadow-xs active:scale-[0.98]',
             !activeFolderId

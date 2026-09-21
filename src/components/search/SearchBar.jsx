@@ -6,8 +6,10 @@ import { useSearch } from '../../hooks/useSearch';
 import { Search, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { formatDate } from '../../lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function SearchBar() {
+  const router = useRouter();
   const { searchOpen, setSearchOpen, setActiveBook, setActiveFolder, setActivePage } = useUIStore();
   const { bookPages } = usePageStore();
   const { query, setQuery, results } = useSearch(bookPages);
@@ -34,6 +36,7 @@ export default function SearchBar() {
     setActiveFolder(page.folderId);
     setActivePage(page.id);
     setSearchOpen(false);
+    router.push(`/books/${page.bookId}/pages/${page.id}`);
   };
 
   return (

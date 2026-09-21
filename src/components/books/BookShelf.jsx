@@ -8,8 +8,10 @@ import BookCreateModal from './BookCreateModal';
 import { motion } from 'framer-motion';
 import { BookOpen, Plus, Clock } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function BookShelf() {
+  const router = useRouter();
   const { books, loading, fetchBooks } = useBookStore();
   const { recentPages, fetchRecentPages } = usePageStore();
   const { setActiveBook, setActivePage, setActiveFolder } = useUIStore();
@@ -54,6 +56,7 @@ export default function BookShelf() {
                   setActiveBook(page.bookId);
                   setActiveFolder(page.folderId);
                   setActivePage(page.id);
+                  router.push(`/books/${page.bookId}/pages/${page.id}`);
                 }}
                 className="flex-shrink-0 px-4 py-2.5 bg-white dark:bg-ink-800 border border-paper-200 dark:border-ink-700 rounded-xl text-left hover:border-ink-300 dark:hover:border-ink-500 transition-all shadow-card min-w-[180px]"
               >

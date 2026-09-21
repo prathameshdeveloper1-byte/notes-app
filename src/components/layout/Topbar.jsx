@@ -9,8 +9,10 @@ import ViewToggle from './ViewToggle';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { Search, Moon, Sun, Maximize2, Minimize2, Download, Plus, ChevronRight, LogOut, User } from 'lucide-react';
 import { exportBookAsPDF } from '../../lib/pdfExport';
+import { useRouter } from 'next/navigation';
 
 export default function Topbar() {
+  const router = useRouter();
   const {
     darkMode, toggleDarkMode,
     focusMode, toggleFocusMode,
@@ -31,6 +33,7 @@ export default function Topbar() {
     if (!activeFolderId) return;
     const id = await addPage({ bookId: activeBookId, folderId: activeFolderId, title: 'Untitled Page' });
     setActivePage(id);
+    router.push(`/books/${activeBookId}/pages/${id}`);
   };
 
   const handleExport = async () => {
@@ -51,13 +54,26 @@ export default function Topbar() {
   return (
     <header className="flex items-center gap-3 px-4 py-3 border-b border-paper-200 dark:border-ink-800 bg-white dark:bg-ink-900 flex-shrink-0">
       <div className="flex items-center gap-1 text-sm text-ink-400 dark:text-ink-500 flex-1 min-w-0">
-        <button onClick={() => setActiveFolder(null)} className="hover:text-ink-700 dark:hover:text-paper-100 transition truncate">
+        <button
+          onClick={() => {
+            setActiveFolder(null);
+            setActivePage(null);
+            router.push(`/books/${activeBookId}`);
+          }}
+          className="hover:text-ink-700 dark:hover:text-paper-100 transition truncate font-medium"
+        >
           {activeBook?.title || 'Book'}
         </button>
         {activeFolder && (
           <>
             <ChevronRight size={14} className="flex-shrink-0" />
-            <button onClick={() => setActivePage(null)} className="hover:text-ink-700 dark:hover:text-paper-100 transition truncate">
+            <button
+              onClick={() => {
+                setActivePage(null);
+                router.push(`/books/${activeBookId}/chapters/${activeFolderId}`);
+              }}
+              className="hover:text-ink-700 dark:hover:text-paper-100 transition truncate"
+            >
               {activeFolder.title}
             </button>
           </>

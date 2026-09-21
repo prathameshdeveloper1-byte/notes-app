@@ -5,32 +5,28 @@ import useUIStore from '../../store/useUIStore';
 import { getContrastColor } from '../../lib/utils';
 import { MoreVertical, Edit2, Trash2, BookOpen } from 'lucide-react';
 import BookCreateModal from './BookCreateModal';
+import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
+import { useRouter } from 'next/navigation';
 
 export default function BookCard({ book }) {
+  const router = useRouter();
   const { removeBook } = useBookStore();
   const { setActiveBook } = useUIStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const textColor = getContrastColor(book.coverColor);
-
-  const handleDelete = (e) => {
-    e.stopPropagation();
-    if (confirmDelete) {
-      removeBook(book.id);
-    } else {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-    }
-  };
 
   return (
     <>
       <div
         className="relative aspect-[3/4] rounded-2xl cursor-pointer group shadow-card hover:shadow-page transition-all duration-200 hover:-translate-y-1"
         style={{ backgroundColor: book.coverColor }}
-        onClick={() => setActiveBook(book.id)}
+        onClick={() => {
+          setActiveBook(book.id);
+          router.push(`/books/${book.id}`);
+        }}
       >
         {/* Spine effect */}
         <div
@@ -70,14 +66,10 @@ export default function BookCard({ book }) {
               <Edit2 size={14} /> Edit
             </button>
             <button
-              className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
-                confirmDelete
-                  ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                  : 'text-ink-700 dark:text-paper-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400'
-              }`}
-              onClick={handleDelete}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              onClick={() => { setDeleteOpen(true); setMenuOpen(false); }}
             >
-              <Trash2 size={14} /> {confirmDelete ? 'Confirm?' : 'Delete'}
+              <Trash2 size={14} /> Delete
             </button>
           </div>
         )}
@@ -88,6 +80,18 @@ export default function BookCard({ book }) {
           open={editOpen}
           onClose={() => setEditOpen(false)}
           initialBook={book}
+        />
+      )}
+
+      {deleteOpen && (
+        <ConfirmDeleteModal
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => removeBook(book.id)}
+          title="Delete Book"
+          itemName={book.title}
+          description="Are you sure you want to delete this notebook? All chapters and pages inside will be permanently deleted."
+          itemType="book"
         />
       )}
     </>

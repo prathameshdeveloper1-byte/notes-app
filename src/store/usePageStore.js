@@ -1,7 +1,8 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import {
   getPagesByFolder,
   getPagesByBook,
+  getPage,
   createPage,
   updatePage,
   deletePage,
@@ -45,6 +46,27 @@ const usePageStore = create((set, get) => ({
     } catch (err) {
       console.error('Failed to fetch recent pages:', err);
     }
+  },
+
+  fetchPage: async (pageId) => {
+    if (!pageId) return null;
+    try {
+      const page = await getPage(pageId);
+      if (page) {
+        set((state) => {
+          const existsInPages = state.pages.some(p => p.id === page.id);
+          const existsInBookPages = state.bookPages.some(p => p.id === page.id);
+          return {
+            pages: existsInPages ? state.pages.map(p => p.id === page.id ? page : p) : [...state.pages, page],
+            bookPages: existsInBookPages ? state.bookPages.map(p => p.id === page.id ? page : p) : [...state.bookPages, page],
+          };
+        });
+        return page;
+      }
+    } catch (err) {
+      console.error('Failed to fetch page:', err);
+    }
+    return null;
   },
 
   addPage: async ({ bookId, folderId, title }) => {

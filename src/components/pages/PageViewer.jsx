@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Edit3, Copy, Check, BookOpen, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { wordCount, readingTime, formatDate } from '../../lib/utils';
 import ImageLightbox from './ImageLightbox';
+import { useRouter } from 'next/navigation';
 
 const pageVariants = {
   enter: (direction) => ({
@@ -21,17 +22,20 @@ const pageVariants = {
 };
 
 export default function PageViewer() {
-  const { pages, fetchPages } = usePageStore();
-  const { activeFolderId, setActivePage, bookViewPageIndex, setBookViewPageIndex } = useUIStore();
+  const router = useRouter();
+  const { pages, bookPages, fetchPages, fetchBookPages } = usePageStore();
+  const { activeBookId, activeFolderId, setActivePage, bookViewPageIndex, setBookViewPageIndex } = useUIStore();
   const [direction, setDirection] = useState(0);
   const [lightboxImg, setLightboxImg] = useState(null);
 
   useEffect(() => {
     if (activeFolderId) fetchPages(activeFolderId);
-  }, [activeFolderId]);
+    else if (activeBookId) fetchBookPages(activeBookId);
+  }, [activeFolderId, activeBookId]);
 
-  const currentPage = pages[bookViewPageIndex] || null;
-  const total = pages.length;
+  const displayPages = activeFolderId ? pages : (bookPages.length > 0 ? bookPages : pages);
+  const currentPage = displayPages[bookViewPageIndex] || null;
+  const total = displayPages.length;
 
   const goTo = (idx) => {
     setDirection(idx > bookViewPageIndex ? 1 : -1);
@@ -41,9 +45,9 @@ export default function PageViewer() {
   const prev = () => { if (bookViewPageIndex > 0) goTo(bookViewPageIndex - 1); };
   const next = () => { if (bookViewPageIndex < total - 1) goTo(bookViewPageIndex + 1); };
 
-  if (pages.length === 0) return (
+  if (displayPages.length === 0) return (
     <div className="flex items-center justify-center h-full text-ink-400 font-serif text-xl">
-      No pages in this chapter yet.
+      No pages to display yet.
     </div>
   );
 
@@ -100,7 +104,11 @@ export default function PageViewer() {
                     </div>
 
                     <button
-                      onClick={() => setActivePage(currentPage.id)}
+                      onClick={() => {
+                        setActivePage(currentPage.id);
+                        const bookId = currentPage.bookId || activeBookId;
+                        router.push(`/books/${bookId}/pages/${currentPage.id}`);
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold transition"
                       title="Edit this note"
                     >

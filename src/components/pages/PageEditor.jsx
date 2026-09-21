@@ -26,15 +26,18 @@ import ImageLightbox from './ImageLightbox';
 import SideMediaRail from './SideMediaRail';
 import AISuggestionCard from './AISuggestionCard';
 import { AnimatePresence, motion } from 'framer-motion';
+import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
+import { useRouter } from 'next/navigation';
 import {
   Bold, Italic, Underline as UnderlineIcon, Highlighter, Heading1, Heading2, Heading3,
   List, ListOrdered, CheckSquare, Code, Quote, ArrowLeft, Star, Tag, Palette,
   Download, Cloud, Loader2, Sparkles, Undo2, Check, AlertCircle, CheckCircle2, X,
-  Edit3, Eye, Copy, Table as TableIcon, ChevronLeft, ChevronRight, Plus
+  Edit3, Eye, Copy, Table as TableIcon, ChevronLeft, ChevronRight, Plus, Trash2
 } from 'lucide-react';
 
 export default function PageEditor() {
-  const { pages, bookPages, savePage, saving, addPage } = usePageStore();
+  const router = useRouter();
+  const { pages, bookPages, savePage, saving, addPage, deletePage } = usePageStore();
   const { activePageId, activeBookId, activeFolderId, setActivePage } = useUIStore();
   const { user } = useAuthStore();
 
@@ -68,6 +71,7 @@ export default function PageEditor() {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [starred, setStarred] = useState(page?.starred || false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [deletePageModalOpen, setDeletePageModalOpen] = useState(false);
 
   // In-app Toast Notification state
   const [toast, setToast] = useState(null);
@@ -111,25 +115,30 @@ export default function PageEditor() {
   const handlePrevPage = () => {
     if (hasPrevPage && prevPageItem) {
       setActivePage(prevPageItem.id);
+      router.push(`/books/${prevPageItem.bookId || activeBookId}/pages/${prevPageItem.id}`);
     }
   };
 
   const handleNextPage = () => {
     if (hasNextPage && nextPageItem) {
       setActivePage(nextPageItem.id);
+      router.push(`/books/${nextPageItem.bookId || activeBookId}/pages/${nextPageItem.id}`);
     }
   };
 
   const handleAddNewPage = async () => {
     try {
+      const bookId = activeBookId || page?.bookId;
+      const folderId = currentFolderId || page?.folderId;
       const newId = await addPage({
-        bookId: activeBookId || page?.bookId,
-        folderId: currentFolderId || page?.folderId,
+        bookId,
+        folderId,
         title: '',
       });
       if (newId) {
         setActivePage(newId);
         showToast('success', 'Created new page in this topic!');
+        router.push(`/books/${bookId}/pages/${newId}`);
       }
     } catch (err) {
       console.error('Failed to add page:', err);
@@ -258,7 +267,7 @@ export default function PageEditor() {
     } else if (editor) {
       editor.commands.clearContent();
     }
-  }, [activePageId]);
+  }, [activePageId, page?.id, page?.contentJSON, editor]);
 
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }, []);
 
@@ -651,7 +660,18 @@ export default function PageEditor() {
       <div className="flex items-center justify-between px-6 sm:px-10 pt-5 pb-3 border-b border-paper-200/80 dark:border-ink-800 bg-white/60 dark:bg-ink-900/60 backdrop-blur-md z-10">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActivePage(null)}
+            onClick={() => {
+              setActivePage(null);
+              const bookId = activeBookId || page?.bookId;
+              const folderId = currentFolderId || page?.folderId;
+              if (folderId) {
+                router.push(`/books/${bookId}/chapters/${folderId}`);
+              } else if (bookId) {
+                router.push(`/books/${bookId}`);
+              } else {
+                router.push('/');
+              }
+            }}
             className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 dark:hover:text-paper-100 transition"
           >
             <ArrowLeft size={14} /> Back
@@ -769,6 +789,14 @@ export default function PageEditor() {
 
           <button onClick={handleMarkdownExport} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition" title="Export as Markdown">
             <Download size={16} className="text-ink-400" />
+          </button>
+
+          <button
+            onClick={() => setDeletePageModalOpen(true)}
+            className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 text-ink-400 hover:text-red-600 rounded-lg transition"
+            title="Delete this page"
+          >
+            <Trash2 size={16} />
           </button>
         </div>
       </div>
@@ -1036,6 +1064,32 @@ export default function PageEditor() {
           alt={lightboxImg.alt}
           onClose={() => setLightboxImg(null)}
           onDelete={handleDeleteImage}
+        />
+      )}
+
+      {/* Delete Page Confirmation Modal */}
+      {deletePageModalOpen && (
+        <ConfirmDeleteModal
+          open={deletePageModalOpen}
+          onClose={() => setDeletePageModalOpen(false)}
+          onConfirm={async () => {
+            const bookId = activeBookId || page?.bookId;
+            const folderId = currentFolderId || page?.folderId;
+            await deletePage(activePageId, bookId, folderId);
+            setDeletePageModalOpen(false);
+            setActivePage(null);
+            if (folderId) {
+              router.push(`/books/${bookId}/chapters/${folderId}`);
+            } else if (bookId) {
+              router.push(`/books/${bookId}`);
+            } else {
+              router.push('/');
+            }
+          }}
+          title="Delete Page"
+          itemName={title || page?.title || 'Untitled Page'}
+          description="Are you sure you want to delete this page? All notes and content on this page will be permanently removed."
+          itemType="page"
         />
       )}
 

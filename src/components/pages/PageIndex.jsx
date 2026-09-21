@@ -18,17 +18,23 @@ import {
   X,
   Layers,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from 'lucide-react';
 import { cn, formatDate, wordCount, readingTime, extractSnippet } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import ConfirmDeleteModal from '../ui/ConfirmDeleteModal';
 
 export default function PageIndex() {
-  const { folders, fetchFolders } = useFolderStore();
-  const { bookPages, fetchBookPages, addPage } = usePageStore();
+  const router = useRouter();
+  const { folders, fetchFolders, removeFolder } = useFolderStore();
+  const { bookPages, fetchBookPages, addPage, deletePage } = usePageStore();
   const { books } = useBookStore();
   const { activeBookId, setActiveFolder, setActivePage, setViewMode } = useUIStore();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState(null);
+  const [deletePageTarget, setDeletePageTarget] = useState(null);
 
   const activeBook = books.find(b => b.id === activeBookId);
   const accentColor = activeBook?.coverColor || '#4f46e5';
@@ -48,6 +54,7 @@ export default function PageIndex() {
   const navigateTo = (page) => {
     setActiveFolder(page.folderId);
     setActivePage(page.id);
+    router.push(`/books/${activeBookId}/pages/${page.id}`);
   };
 
   const handleCreatePageInFolder = async (folderId) => {
@@ -60,6 +67,7 @@ export default function PageIndex() {
       if (id) {
         setActiveFolder(folderId);
         setActivePage(id);
+        router.push(`/books/${activeBookId}/pages/${id}`);
       }
     } catch (err) {
       console.error('Failed to create page in folder:', err);
@@ -94,7 +102,10 @@ export default function PageIndex() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setViewMode('book'); }}
+              onClick={() => {
+                setViewMode('book');
+                router.push(`/books/${activeBookId}/read`);
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-paper-100 dark:bg-ink-800 hover:bg-paper-200 dark:hover:bg-ink-700 text-ink-700 dark:text-paper-200 text-xs font-semibold rounded-xl border border-paper-300/80 dark:border-ink-700 shadow-xs transition"
               title="Read as a continuous book"
             >
@@ -224,10 +235,23 @@ export default function PageIndex() {
                       <Plus size={12} /> Add Page
                     </button>
                     <button
-                      onClick={() => setActiveFolder(folder.id)}
+                      onClick={() => {
+                        setActiveFolder(folder.id);
+                        router.push(`/books/${activeBookId}/chapters/${folder.id}`);
+                      }}
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-ink-600 dark:text-paper-300 hover:text-ink-900 dark:hover:text-white transition"
                     >
                       View Chapter <ArrowRight size={12} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteFolderTarget(folder);
+                      }}
+                      className="p-1 text-ink-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition"
+                      title="Delete Chapter"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
@@ -252,6 +276,7 @@ export default function PageIndex() {
                         page={page}
                         folders={folders}
                         onClick={() => navigateTo(page)}
+                        onDelete={(p) => setDeletePageTarget(p)}
                       />
                     ))}
                   </div>
@@ -279,20 +304,52 @@ export default function PageIndex() {
 
       {/* Create Chapter Modal */}
       <FolderCreateModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+
+      {/* Delete Chapter Modal */}
+      {deleteFolderTarget && (
+        <ConfirmDeleteModal
+          open={!!deleteFolderTarget}
+          onClose={() => setDeleteFolderTarget(null)}
+          onConfirm={async () => {
+            await removeFolder(deleteFolderTarget.id, activeBookId);
+            setDeleteFolderTarget(null);
+          }}
+          title="Delete Chapter"
+          itemName={deleteFolderTarget.title}
+          description="Are you sure you want to delete this chapter? All notes inside will be permanently deleted."
+          itemType="chapter"
+        />
+      )}
+
+      {/* Delete Page Modal */}
+      {deletePageTarget && (
+        <ConfirmDeleteModal
+          open={!!deletePageTarget}
+          onClose={() => setDeletePageTarget(null)}
+          onConfirm={async () => {
+            await deletePage(deletePageTarget.id, activeBookId, deletePageTarget.folderId);
+            setDeletePageTarget(null);
+          }}
+          title="Delete Page"
+          itemName={deletePageTarget.title || 'Untitled Page'}
+          description="Are you sure you want to delete this page? All content will be permanently removed."
+          itemType="page"
+        />
+      )}
     </div>
   );
 }
 
-function PageRow({ page, indexNumber, folders, onClick }) {
+function PageRow({ page, indexNumber, folders, onClick, onDelete }) {
   const folder = folders.find(f => f.id === page.folderId);
   const wc = wordCount(page.contentJSON);
   const snippet = extractSnippet(page.contentJSON, 80);
 
   return (
-    <button
+    <div
       onClick={onClick}
       className={cn(
-        'group flex items-center justify-between w-full py-2.5 px-3 rounded-xl text-left transition-all',
+        'group flex items-center justify-between w-full py-2.5 px-3 rounded-xl text-left transition-all cursor-pointer',
         'hover:bg-paper-100/80 dark:hover:bg-ink-750/70'
       )}
     >
@@ -334,16 +391,30 @@ function PageRow({ page, indexNumber, folders, onClick }) {
         </div>
       </div>
 
-      {/* Meta details */}
-      <div className="flex items-center gap-3 flex-shrink-0 text-xs text-ink-400">
+      {/* Meta details & Actions */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-xs text-ink-400">
         <span className="hidden sm:inline-flex items-center gap-1 font-mono text-[11px]">
           <Clock size={11} className="text-ink-300 dark:text-ink-600" />
           {readingTime(wc)}
         </span>
         <span className="text-ink-300 dark:text-ink-600 hidden sm:inline">&middot;</span>
         <span className="text-[11px] font-mono">{formatDate(page.updatedAt)}</span>
+        
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(page);
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition"
+            title="Delete page"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+        
         <ChevronRight size={14} className="text-ink-300 group-hover:text-ink-600 dark:group-hover:text-paper-200 group-hover:translate-x-0.5 transition-all" />
       </div>
-    </button>
+    </div>
   );
 }

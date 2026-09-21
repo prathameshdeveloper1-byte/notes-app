@@ -5,8 +5,10 @@ import useUIStore from '../../store/useUIStore';
 import PageCard from './PageCard';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function PageGrid() {
+  const router = useRouter();
   const { pages, fetchPages, addPage, loading } = usePageStore();
   const { activeBookId, activeFolderId, setActivePage } = useUIStore();
 
@@ -17,6 +19,7 @@ export default function PageGrid() {
   const handleNewPage = async () => {
     const id = await addPage({ bookId: activeBookId, folderId: activeFolderId, title: 'Untitled Page' });
     setActivePage(id);
+    router.push(`/books/${activeBookId}/pages/${id}`);
   };
 
   if (loading && pages.length === 0) return (

@@ -35,6 +35,11 @@ const useUIStore = create(
       setActiveBook: (id) => set({ activeBookId: id, activeFolderId: null, activePageId: null }),
       setActiveFolder: (id) => set({ activeFolderId: id, activePageId: null }),
       setActivePage: (id) => set({ activePageId: id }),
+      syncRoute: ({ bookId, folderId, pageId }) => set((s) => ({
+        activeBookId: bookId !== undefined ? bookId : s.activeBookId,
+        activeFolderId: folderId !== undefined ? folderId : s.activeFolderId,
+        activePageId: pageId !== undefined ? pageId : s.activePageId,
+      })),
 
       // Book view page index
       bookViewPageIndex: 0,
