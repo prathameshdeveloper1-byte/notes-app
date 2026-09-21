@@ -7,7 +7,7 @@ import BookCard from './BookCard';
 import BookCreateModal from './BookCreateModal';
 import { BookShelfSkeleton } from '../ui/SkeletonLoaders';
 import { motion } from 'framer-motion';
-import { BookOpen, Plus, Clock, Flame, Sparkles, Loader2 } from 'lucide-react';
+import { BookOpen, Plus, Clock, Flame, Sparkles, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { formatDate, formatActivityTime, calculateStreak } from '../../lib/utils';
 import { createSampleNotebook } from '../../lib/sampleNotebook';
 import { useRouter } from 'next/navigation';
@@ -15,8 +15,8 @@ import { useRouter } from 'next/navigation';
 export default function BookShelf() {
   const router = useRouter();
   const { books, loading, fetchBooks } = useBookStore();
-  const { recentPages, fetchRecentPages } = usePageStore();
-  const { setActiveBook, setActivePage, setActiveFolder } = useUIStore();
+  const { recentPages, fetchRecentPages, bookPages } = usePageStore();
+  const { setActiveBook, setActivePage, setActiveFolder, soundEnabled, toggleSound } = useUIStore();
   const [createOpen, setCreateOpen] = useState(false);
   const [loadingSample, setLoadingSample] = useState(false);
 
@@ -26,6 +26,15 @@ export default function BookShelf() {
   }, []);
 
   const streak = calculateStreak(recentPages);
+
+  // Estimate page counts from available page store state
+  const bookCounts = {};
+  (recentPages || []).forEach((p) => {
+    if (p.bookId) bookCounts[p.bookId] = (bookCounts[p.bookId] || 0) + 1;
+  });
+  (bookPages || []).forEach((p) => {
+    if (p.bookId) bookCounts[p.bookId] = (bookCounts[p.bookId] || 0) + 1;
+  });
 
   const handleLoadSample = async () => {
     setLoadingSample(true);
@@ -51,7 +60,7 @@ export default function BookShelf() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl sm:text-4xl font-serif font-bold text-ink-900 dark:text-paper-100 tracking-tight">
-              📚 My Notebooks
+              📚 My Library
             </h1>
             {/* Streak Pill */}
             {streak > 0 ? (
@@ -72,17 +81,28 @@ export default function BookShelf() {
             )}
           </div>
           <p className="text-xs sm:text-sm text-ink-400 dark:text-ink-500 mt-1.5">
-            Your personal digital desk — tactile, organized, distraction-free.
+            Your personal digital study desk — physical books, tactile covers, distraction-free.
           </p>
         </div>
 
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-ink-900 dark:bg-paper-100 text-white dark:text-ink-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-ink-800 dark:hover:bg-white transition-all shadow-card active:scale-[0.98] self-start sm:self-auto"
-        >
-          <Plus size={17} />
-          <span>New Notebook</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Sound Toggle */}
+          <button
+            onClick={toggleSound}
+            className="p-2.5 rounded-xl border border-paper-300 dark:border-ink-750 bg-white dark:bg-ink-850 hover:bg-paper-100 dark:hover:bg-ink-750 text-ink-600 dark:text-paper-300 transition shadow-xs"
+            title={soundEnabled ? 'Paper & Book sound effects enabled' : 'Sound effects muted'}
+          >
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} className="text-ink-400" />}
+          </button>
+
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-ink-900 dark:bg-paper-100 text-white dark:text-ink-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-ink-800 dark:hover:bg-white transition-all shadow-card active:scale-[0.98]"
+          >
+            <Plus size={17} />
+            <span>New Notebook</span>
+          </button>
+        </div>
       </div>
 
       {/* Recent pages strip */}
@@ -90,7 +110,7 @@ export default function BookShelf() {
         <div className="mb-10">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-400 dark:text-ink-500 mb-3">
             <Clock size={13} />
-            <span>Recently Edited</span>
+            <span>Recently Opened Notes</span>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
             {recentPages.map((page) => (
@@ -116,9 +136,9 @@ export default function BookShelf() {
         </div>
       )}
 
-      {/* Bookshelf Grid or States */}
+      {/* Bookshelf Grid or Empty States */}
       {loading ? (
-        <BookShelfSkeleton count={5} />
+        <BookShelfSkeleton count={6} />
       ) : books.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -159,17 +179,32 @@ export default function BookShelf() {
           </div>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 sm:gap-6">
-          {books.map((book, i) => (
-            <motion.div
-              key={book.id}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <BookCard book={book} />
-            </motion.div>
-          ))}
+        /* AMBIENT WOODEN STUDY SHELF STRUCTURE */
+        <div className="relative pt-6 pb-2 px-4 sm:px-6 rounded-3xl bg-amber-950/[0.03] dark:bg-black/30 border border-amber-900/10 dark:border-amber-900/20 shadow-inner">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 sm:gap-7 items-end">
+            {books.map((book, i) => (
+              <motion.div
+                key={book.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <BookCard book={book} pageCount={bookCounts[book.id] || 0} />
+              </motion.div>
+            ))}
+          </div>
+
+          {/* REALISTIC WOODEN SHELF LEDGE */}
+          <div className="relative mt-2 -mx-4 sm:-mx-6 pointer-events-none select-none">
+            {/* Top surface & highlight */}
+            <div className="h-3 w-full bg-gradient-to-r from-[#996556] via-[#b57a69] to-[#996556] dark:from-[#3a2016] dark:via-[#4a2b1f] dark:to-[#3a2016] shadow-xs border-t border-amber-400/40 rounded-t-xs" />
+            {/* Beveled front wooden trim */}
+            <div className="h-4.5 w-full bg-gradient-to-b from-[#7a483a] to-[#5a3227] dark:from-[#2a160e] dark:to-[#170b07] shadow-lg flex items-center justify-between px-6 border-b border-black/30">
+              <div className="h-[1px] w-full bg-white/10" />
+            </div>
+            {/* Cast shadow under the shelf ledge */}
+            <div className="h-4 w-full bg-gradient-to-b from-black/30 to-transparent" />
+          </div>
         </div>
       )}
 

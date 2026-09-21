@@ -64,6 +64,34 @@ const useUIStore = create(
       // Book view page index
       bookViewPageIndex: 0,
       setBookViewPageIndex: (i) => set({ bookViewPageIndex: i }),
+
+      // Physical sound effects (paper rustle, cover flip)
+      soundEnabled: true,
+      setSoundEnabled: (v, persistToDB = true) => {
+        set({ soundEnabled: v });
+        if (persistToDB) {
+          import('../lib/supabase/queries').then((q) => q.saveUserPreference('soundEnabled', v)).catch(() => {});
+        }
+      },
+      toggleSound: () => {
+        const next = !get().soundEnabled;
+        set({ soundEnabled: next });
+        import('../lib/supabase/queries').then((q) => q.saveUserPreference('soundEnabled', next)).catch(() => {});
+      },
+
+      // Two-page book spread in reader view
+      twoPageSpread: true,
+      setTwoPageSpread: (v, persistToDB = true) => {
+        set({ twoPageSpread: v });
+        if (persistToDB) {
+          import('../lib/supabase/queries').then((q) => q.saveUserPreference('twoPageSpread', v)).catch(() => {});
+        }
+      },
+      toggleTwoPageSpread: () => {
+        const next = !get().twoPageSpread;
+        set({ twoPageSpread: next });
+        import('../lib/supabase/queries').then((q) => q.saveUserPreference('twoPageSpread', next)).catch(() => {});
+      },
     }),
     {
       name: 'book-notes-ui',
@@ -72,6 +100,8 @@ const useUIStore = create(
         viewMode: s.viewMode,
         sidebarCollapsed: s.sidebarCollapsed,
         recentVisitedPages: s.recentVisitedPages,
+        soundEnabled: s.soundEnabled,
+        twoPageSpread: s.twoPageSpread,
       }),
     }
   )

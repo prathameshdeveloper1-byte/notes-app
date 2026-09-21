@@ -304,3 +304,32 @@ export async function getPublicPage(id) {
   }
 }
 
+// ── User Preferences (Stored in Supabase Auth user_metadata) ─────────────────
+export async function saveUserPreference(key, value) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const currentPrefs = user.user_metadata?.preferences || {};
+    const updatedPrefs = { ...currentPrefs, [key]: value };
+    await supabase.auth.updateUser({
+      data: {
+        preferences: updatedPrefs,
+      },
+    });
+  } catch (err) {
+    console.error('saveUserPreference error:', err);
+  }
+}
+
+export async function getUserPreferences() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    return user.user_metadata?.preferences || null;
+  } catch (err) {
+    console.error('getUserPreferences error:', err);
+    return null;
+  }
+}
+
+
