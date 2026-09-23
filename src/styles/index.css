@@ -359,10 +359,30 @@
     content: attr(data-placeholder);
     @apply text-ink-300 dark:text-ink-600 pointer-events-none float-left h-0;
   }
-
   /* Custom Scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { @apply bg-paper-300 dark:bg-ink-700 rounded-full; }
   ::-webkit-scrollbar-thumb:hover { @apply bg-paper-400 dark:bg-ink-600; }
+
+  /* Topic Deep-Link Arrival Pulse Highlight */
+  @keyframes topicPulse {
+    0% {
+      background-color: rgba(245, 158, 11, 0.45);
+      box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.35);
+      border-radius: 8px;
+    }
+    40% {
+      background-color: rgba(245, 158, 11, 0.28);
+      box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.2);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: none;
+    }
+  }
+
+  .topic-highlight-pulse {
+    animation: topicPulse 3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
 }

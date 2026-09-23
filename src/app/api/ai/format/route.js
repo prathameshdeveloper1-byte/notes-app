@@ -28,6 +28,7 @@ ABSOLUTE RULES:
 - Keep all image URLs exactly: ![alt](url)
 - NEVER write tutorials, explanations, or new paragraphs that the user did not write.
 - NEVER expand a short note into a long article.
+- NEVER output lone bullet characters, standalone dots (•, ., -), or empty bullet lines. Every bullet point must have its text on the SAME line.
 - AUTOMATIC TITLE: Generate a concise, accurate 2-5 word title in "generatedTitle" based on the note's subject (e.g., "V8 Engine Architecture", "JavaScript Scope & Closures"). If the note is already named, keep or improve it.
 
 Title: ${title || 'Untitled'}
@@ -97,7 +98,10 @@ Respond with JSON only:
       }
     }
 
-    const content = parsed.formattedUserContent || '';
+    let content = (parsed.formattedUserContent || '')
+      .split('\n')
+      .filter((line) => !/^[\s\u00a0\u200b]*([•·●○▪▫◦⁃‣\.\*\-]|&bull;|&middot;)+[\s\u00a0\u200b]*$/.test(line))
+      .join('\n');
 
     if (!content.trim()) {
       return NextResponse.json(

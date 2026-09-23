@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { sanitizeContentJSON } from '../lib/sanitizeContent';
 
 /**
  * Hook for managing page metadata (title, tags, color, starred)
@@ -32,7 +33,8 @@ export function usePageAutosave({ page, activeBookId, activeFolderId, savePage }
     async (getContentJSON) => {
       if (!page?.id) return false;
       try {
-        const contentJSON = getContentJSON ? getContentJSON() : page.contentJSON;
+        const rawJSON = getContentJSON ? getContentJSON() : page.contentJSON;
+        const contentJSON = sanitizeContentJSON(rawJSON);
         await savePage(
           page.id,
           {
@@ -61,10 +63,11 @@ export function usePageAutosave({ page, activeBookId, activeFolderId, savePage }
     async (contentJSON, newTags, newTitle, newColor, newStarred) => {
       if (!page?.id) return false;
       try {
+        const cleanedJSON = contentJSON ? sanitizeContentJSON(contentJSON) : contentJSON;
         await savePage(
           page.id,
           {
-            contentJSON,
+            contentJSON: cleanedJSON,
             tags: newTags !== undefined ? newTags : tags,
             title: newTitle !== undefined ? newTitle : title,
             color: newColor !== undefined ? newColor : color,

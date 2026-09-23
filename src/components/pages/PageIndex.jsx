@@ -390,13 +390,6 @@ function PageRow({ page, indexNumber, folders, onClick, onDelete }) {
               </span>
             ))}
           </div>
-
-          {/* Snippet Preview */}
-          {snippet && (
-            <p className="text-xs text-ink-400 dark:text-ink-500 truncate mt-0.5 font-normal">
-              {snippet}
-            </p>
-          )}
         </div>
       </div>
 

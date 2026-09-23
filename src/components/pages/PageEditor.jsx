@@ -22,6 +22,7 @@ import usePageAutosave from '../../hooks/usePageAutosave';
 import usePageImages from '../../hooks/usePageImages';
 import useTiptapEditor from '../../hooks/useTiptapEditor';
 import usePageAI from '../../hooks/usePageAI';
+import { sanitizeTiptapEditor } from '../../lib/sanitizeContent';
 
 import EditorToolbar from './EditorToolbar';
 import ImageLightbox from './ImageLightbox';
@@ -130,9 +131,17 @@ export default function PageEditor() {
   // Manual save handler (Triggered ONLY by Save button or Ctrl+S)
   const handleSaveClick = async () => {
     if (!editor && !page) return;
+    // Sanitize stray dots in-place from Tiptap editor so user immediately sees them disappear
+    let dotsRemoved = false;
+    if (editor) {
+      dotsRemoved = sanitizeTiptapEditor(editor);
+    }
     const ok = await saveChanges(() => (editor ? JSON.stringify(editor.getJSON()) : page?.contentJSON));
     if (ok) {
-      showToast('success', 'Changes saved successfully!');
+      showToast(
+        'success',
+        dotsRemoved ? 'Saved & cleaned stray bullet dots!' : 'Changes saved successfully!'
+      );
     } else {
       showToast('error', 'Failed to save changes');
     }
@@ -149,6 +158,67 @@ export default function PageEditor() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [editor, saveChanges]);
+
+  // Topic deep-link: smooth scroll & pulse highlight matching heading on page
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let retryCount = 0;
+    let timerId = null;
+
+    const checkAndScrollToTopic = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const topicQuery = urlParams.get('topic');
+      const hash = window.location.hash ? decodeURIComponent(window.location.hash.substring(1)) : '';
+      const targetQuery = (topicQuery || hash || '').trim().toLowerCase();
+
+      if (!targetQuery) return;
+
+      const editorEl = document.querySelector('.tiptap-editor');
+      if (!editorEl) {
+        if (retryCount < 5) {
+          retryCount++;
+          timerId = setTimeout(checkAndScrollToTopic, 250);
+        }
+        return;
+      }
+
+      // Find matching heading, strong text, or paragraph
+      const candidates = Array.from(
+        editorEl.querySelectorAll('h1, h2, h3, h4, h5, h6, p, blockquote, strong, li')
+      );
+
+      let matched = null;
+      for (const el of candidates) {
+        const text = el.textContent.trim().toLowerCase();
+        if (text && (text.includes(targetQuery) || targetQuery.includes(text) || el.id === targetQuery)) {
+          matched = el;
+          break;
+        }
+      }
+
+      if (matched) {
+        matched.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        matched.classList.remove('topic-highlight-pulse');
+        // Force reflow for animation restart
+        void matched.offsetWidth;
+        matched.classList.add('topic-highlight-pulse');
+        setTimeout(() => {
+          matched.classList.remove('topic-highlight-pulse');
+        }, 3200);
+      } else if (retryCount < 5) {
+        retryCount++;
+        timerId = setTimeout(checkAndScrollToTopic, 250);
+      }
+    };
+
+    timerId = setTimeout(checkAndScrollToTopic, 200);
+    window.addEventListener('hashchange', checkAndScrollToTopic);
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      window.removeEventListener('hashchange', checkAndScrollToTopic);
+    };
+  }, [activePageId, editor]);
 
   // 4. AI Formatting Hook
   const {

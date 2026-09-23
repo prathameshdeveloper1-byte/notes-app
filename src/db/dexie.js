@@ -9,4 +9,8 @@ db.version(1).stores({
   images:  '++id, pageId, createdAt',
 });
 
+db.version(2).stores({
+  chapterTopics: 'folderId, updatedAt',
+});
+
 export default db;

@@ -107,6 +107,50 @@ export default function PageViewer() {
     }
   }, [bookViewPageIndex, total, twoPageSpread, goTo]);
 
+  // Topic deep-link: smooth scroll & pulse highlight matching heading in reader view
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkAndScrollToTopic = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const topicQuery = urlParams.get('topic');
+      const hash = window.location.hash ? decodeURIComponent(window.location.hash.substring(1)) : '';
+      const targetQuery = (topicQuery || hash || '').trim().toLowerCase();
+
+      if (!targetQuery) return;
+
+      const candidates = Array.from(
+        document.querySelectorAll('.notebook-page h1, .notebook-page h2, .notebook-page h3, .notebook-page [data-topic]')
+      );
+
+      let matched = null;
+      for (const el of candidates) {
+        const text = el.textContent.trim().toLowerCase();
+        if (text && (text.includes(targetQuery) || targetQuery.includes(text) || el.id === targetQuery)) {
+          matched = el;
+          break;
+        }
+      }
+
+      if (matched) {
+        matched.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        matched.classList.remove('topic-highlight-pulse');
+        void matched.offsetWidth;
+        matched.classList.add('topic-highlight-pulse');
+        setTimeout(() => {
+          matched.classList.remove('topic-highlight-pulse');
+        }, 3200);
+      }
+    };
+
+    const timer = setTimeout(checkAndScrollToTopic, 300);
+    window.addEventListener('hashchange', checkAndScrollToTopic);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('hashchange', checkAndScrollToTopic);
+    };
+  }, [bookViewPageIndex, displayPages]);
+
   if (displayPages.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-ink-400 font-serif text-xl">
@@ -182,17 +226,17 @@ export default function PageViewer() {
         </div>
       </div>
 
-      {/* Main 3D Book Reading Area */}
-      <div className="flex-1 overflow-hidden relative perspective-[1800px] flex items-center justify-center p-4 sm:p-6">
+      {/* Main Book Reading Area (Simple, clean, natural scrolling without side animation) */}
+      <div className="flex-1 overflow-y-auto relative flex justify-center p-4 sm:p-8">
         {/* LEFT PAGE-EDGE TAP ZONE (Click to flip prev) */}
         <div
           onClick={prev}
-          className={`absolute left-0 top-0 bottom-0 w-[12%] sm:w-[15%] z-30 cursor-w-resize group flex items-center justify-start pl-4 ${
+          className={`fixed left-0 top-20 bottom-0 w-16 z-30 cursor-w-resize group flex items-center justify-start pl-4 ${
             bookViewPageIndex === 0 ? 'pointer-events-none' : ''
           }`}
           title="Previous Page (Click)"
         >
-          <div className="w-9 h-9 rounded-full bg-white/70 dark:bg-ink-800/70 border border-paper-300 dark:border-ink-700 shadow-md flex items-center justify-center text-ink-700 dark:text-paper-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs">
+          <div className="w-9 h-9 rounded-full bg-white/80 dark:bg-ink-800/80 border border-paper-300 dark:border-ink-700 shadow-md flex items-center justify-center text-ink-700 dark:text-paper-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs">
             <ChevronLeft size={18} />
           </div>
         </div>
@@ -200,7 +244,7 @@ export default function PageViewer() {
         {/* RIGHT PAGE-EDGE TAP ZONE (Click to flip next) */}
         <div
           onClick={next}
-          className={`absolute right-0 top-0 bottom-0 w-[12%] sm:w-[15%] z-30 cursor-e-resize group flex items-center justify-end pr-4 ${
+          className={`fixed right-0 top-20 bottom-0 w-16 z-30 cursor-e-resize group flex items-center justify-end pr-4 ${
             twoPageSpread
               ? rightPageIdx >= total - 1 && leftPageIdx >= total - 1
                 ? 'pointer-events-none'
@@ -211,83 +255,73 @@ export default function PageViewer() {
           }`}
           title="Next Page (Click)"
         >
-          <div className="w-9 h-9 rounded-full bg-white/70 dark:bg-ink-800/70 border border-paper-300 dark:border-ink-700 shadow-md flex items-center justify-center text-ink-700 dark:text-paper-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs">
+          <div className="w-9 h-9 rounded-full bg-white/80 dark:bg-ink-800/80 border border-paper-300 dark:border-ink-700 shadow-md flex items-center justify-center text-ink-700 dark:text-paper-200 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs">
             <ChevronRight size={18} />
           </div>
         </div>
 
-        {/* OPEN HARDCOVER SPREAD CONTAINER */}
-        <div className="w-full max-w-5xl h-full flex flex-col justify-center">
-          <AnimatePresence custom={direction} mode="wait">
-            <motion.div
-              key={`${leftPage?.id}-${twoPageSpread ? rightPage?.id : 'single'}`}
-              custom={direction}
-              variants={page3DVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              className="w-full h-full max-h-[82vh] overflow-hidden flex shadow-book rounded-2xl border border-paper-300 dark:border-ink-800 bg-[var(--bg-page)] relative"
-              style={{ transformStyle: 'preserve-3d' }}
-            >
-              {/* TWO-PAGE SPREAD ON WIDE SCREENS */}
-              {twoPageSpread && rightPage ? (
-                <div className="flex w-full h-full divide-x divide-paper-300 dark:divide-ink-800">
-                  {/* LEFT PAGE */}
-                  <div className="flex-1 overflow-y-auto p-6 sm:p-10 relative custom-scrollbar">
-                    {/* Page Binding Gutter Shadow (Right side of left page) */}
-                    <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-black/10 dark:from-black/30 to-transparent" />
-                    <SinglePageViewContent
-                      page={leftPage}
-                      pageIndex={leftPageIdx}
-                      total={total}
-                      onEdit={() => {
-                        setActivePage(leftPage.id);
-                        router.push(`/books/${leftPage.bookId || activeBookId}/pages/${leftPage.id}`);
-                      }}
-                      onImageClick={(src, alt) => setLightboxImg({ src, alt })}
-                    />
-                  </div>
-
-                  {/* CENTER SEWN BINDING SEAM */}
-                  <div className="w-[3px] bg-paper-400 dark:bg-ink-750 flex-shrink-0 relative shadow-inner">
-                    <div className="absolute inset-y-0 -left-1 -right-1 pointer-events-none bg-gradient-to-r from-black/20 via-black/40 to-black/20" />
-                  </div>
-
-                  {/* RIGHT PAGE */}
-                  <div className="flex-1 overflow-y-auto p-6 sm:p-10 relative custom-scrollbar">
-                    {/* Page Binding Gutter Shadow (Left side of right page) */}
-                    <div className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-r from-black/10 dark:from-black/30 to-transparent" />
-                    <SinglePageViewContent
-                      page={rightPage}
-                      pageIndex={rightPageIdx}
-                      total={total}
-                      onEdit={() => {
-                        setActivePage(rightPage.id);
-                        router.push(`/books/${rightPage.bookId || activeBookId}/pages/${rightPage.id}`);
-                      }}
-                      onImageClick={(src, alt) => setLightboxImg({ src, alt })}
-                    />
-                  </div>
+        {/* OPEN SPREAD CONTAINER */}
+        <div className="w-full max-w-5xl my-auto">
+          <div
+            key={`${leftPage?.id}-${twoPageSpread ? rightPage?.id : 'single'}`}
+            className="w-full shadow-book rounded-2xl border border-paper-300 dark:border-ink-800 bg-[var(--bg-page)] relative transition-none"
+          >
+            {/* TWO-PAGE SPREAD ON WIDE SCREENS */}
+            {twoPageSpread && rightPage ? (
+              <div className="flex w-full divide-x divide-paper-300 dark:divide-ink-800">
+                {/* LEFT PAGE */}
+                <div className="flex-1 p-6 sm:p-10 relative">
+                  <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-black/5 dark:from-black/25 to-transparent" />
+                  <SinglePageViewContent
+                    page={leftPage}
+                    pageIndex={leftPageIdx}
+                    total={total}
+                    onEdit={() => {
+                      setActivePage(leftPage.id);
+                      router.push(`/books/${leftPage.bookId || activeBookId}/pages/${leftPage.id}`);
+                    }}
+                    onImageClick={(src, alt) => setLightboxImg({ src, alt })}
+                  />
                 </div>
-              ) : (
-                /* SINGLE PAGE VIEW (Mobile / Default) */
-                <div className="w-full h-full overflow-y-auto p-6 sm:p-12 relative custom-scrollbar">
-                  {leftPage && (
-                    <SinglePageViewContent
-                      page={leftPage}
-                      pageIndex={bookViewPageIndex}
-                      total={total}
-                      onEdit={() => {
-                        setActivePage(leftPage.id);
-                        router.push(`/books/${leftPage.bookId || activeBookId}/pages/${leftPage.id}`);
-                      }}
-                      onImageClick={(src, alt) => setLightboxImg({ src, alt })}
-                    />
-                  )}
+
+                {/* CENTER SEWN BINDING SEAM */}
+                <div className="w-[3px] bg-paper-400 dark:bg-ink-750 flex-shrink-0 relative shadow-inner">
+                  <div className="absolute inset-y-0 -left-1 -right-1 pointer-events-none bg-gradient-to-r from-black/20 via-black/40 to-black/20" />
                 </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
+
+                {/* RIGHT PAGE */}
+                <div className="flex-1 p-6 sm:p-10 relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-r from-black/5 dark:from-black/25 to-transparent" />
+                  <SinglePageViewContent
+                    page={rightPage}
+                    pageIndex={rightPageIdx}
+                    total={total}
+                    onEdit={() => {
+                      setActivePage(rightPage.id);
+                      router.push(`/books/${rightPage.bookId || activeBookId}/pages/${rightPage.id}`);
+                    }}
+                    onImageClick={(src, alt) => setLightboxImg({ src, alt })}
+                  />
+                </div>
+              </div>
+            ) : (
+              /* SINGLE PAGE VIEW (Mobile / Default) */
+              <div className="w-full p-6 sm:p-12 relative">
+                {leftPage && (
+                  <SinglePageViewContent
+                    page={leftPage}
+                    pageIndex={bookViewPageIndex}
+                    total={total}
+                    onEdit={() => {
+                      setActivePage(leftPage.id);
+                      router.push(`/books/${leftPage.bookId || activeBookId}/pages/${leftPage.id}`);
+                    }}
+                    onImageClick={(src, alt) => setLightboxImg({ src, alt })}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -425,18 +459,39 @@ export function RenderContent({ contentJSON, onImageClick }) {
     switch (node.type) {
       case 'doc':
         return <React.Fragment key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</React.Fragment>;
-      case 'paragraph':
+      case 'paragraph': {
+        const fullText = (node.content || []).map((n) => n.text || '').join('').trim();
+        // Skip stray lone bullet dots on their own line
+        if (/^([•·●○▪▫◦⁃‣\.\*\-]|&bull;|&middot;)+$/.test(fullText)) {
+          return null;
+        }
         return <p key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</p>;
+      }
       case 'heading': {
         const Tag = `h${node.attrs?.level || 1}`;
-        return <Tag key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</Tag>;
+        const headingText = (node.content || []).map((n) => n.text || '').join('').trim();
+        const slug = headingText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        return (
+          <Tag key={index} id={slug} data-topic={headingText}>
+            {(node.content || []).map((n, i) => renderNode(n, i))}
+          </Tag>
+        );
       }
       case 'bulletList':
         return <ul key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</ul>;
       case 'orderedList':
         return <ol key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</ol>;
-      case 'listItem':
+      case 'listItem': {
+        const fullText = (node.content || [])
+          .map((c) => (c.content || []).map((n) => n.text || '').join(''))
+          .join('')
+          .trim();
+        // Skip list item with only lone bullet dot
+        if (/^([•·●○▪▫◦⁃‣\.\*\-]|&bull;|&middot;)+$/.test(fullText)) {
+          return null;
+        }
         return <li key={index}>{(node.content || []).map((n, i) => renderNode(n, i))}</li>;
+      }
       case 'blockquote':
         return (
           <blockquote key={index} className="gfg-callout">

@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { marked } from 'marked';
 import { nodeToMarkdown } from '../lib/markdownExport';
 import { extractImagesFromJSON } from './usePageImages';
+import { sanitizeMarkdown, sanitizeHTML, sanitizeTiptapEditor } from '../lib/sanitizeContent';
 
 /**
  * Hook for AI-powered note formatting, suggestions management, and undo safety backup.
@@ -83,8 +84,11 @@ export function usePageAI({
         throw new Error('AI returned malformed response. Your original note was kept intact.');
       }
 
+      // Sanitize AI Markdown output
+      const cleanMarkdown = sanitizeMarkdown(formattedUserContent);
+
       // Convert Markdown to clean HTML using marked
-      let parsedHTML = marked.parse(formattedUserContent);
+      let parsedHTML = marked.parse(cleanMarkdown);
       if (!parsedHTML || !parsedHTML.trim()) {
         throw new Error('Markdown parser produced empty output. Your original note was kept intact.');
       }
@@ -99,8 +103,14 @@ export function usePageAI({
         .replace(/<tfoot>/gi, '')
         .replace(/<\/tfoot>/gi, '');
 
+      // Sanitize stray bullet dots from HTML
+      parsedHTML = sanitizeHTML(parsedHTML);
+
       // Atomically set content into Tiptap
       editor.commands.setContent(parsedHTML);
+
+      // Clean ProseMirror document structure in-place
+      sanitizeTiptapEditor(editor);
 
       // Safety check: verify content was not lost
       const updatedText = editor.getText();

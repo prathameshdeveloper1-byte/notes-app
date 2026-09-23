@@ -23,6 +23,7 @@ function mapFolder(f) {
     userId: f.user_id,
     title: f.title,
     orderIndex: f.order_index,
+    topics: Array.isArray(f.topics) ? f.topics : [],
     createdAt: new Date(f.created_at).getTime(),
   };
 }
@@ -153,6 +154,23 @@ export async function reorderFolders(bookId, orderedIds) {
     supabase.from('folders').update({ order_index: index }).eq('id', id)
   );
   await Promise.all(updates);
+}
+
+export async function saveFolderTopics(folderId, topics) {
+  try {
+    const { error } = await supabase
+      .from('folders')
+      .update({ topics })
+      .eq('id', folderId);
+    if (error) {
+      console.warn('Could not save topics to Supabase folder (column may not exist yet):', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('saveFolderTopics failed:', err);
+    return false;
+  }
 }
 
 // ── Pages ─────────────────────────────────────────────────────────────────────

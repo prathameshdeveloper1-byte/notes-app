@@ -1,4 +1,4 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- BOOK NOTES APP: SUPABASE DATABASE & STORAGE SCHEMA (MULTI-USER + RLS)
 -- Run this in your Supabase project SQL Editor (https://supabase.com/dashboard)
 -- ==============================================================================
@@ -23,8 +23,12 @@ create table if not exists public.folders (
   user_id uuid references auth.users(id) on delete cascade not null default auth.uid(),
   title text not null default 'New Chapter',
   order_index int not null default 0,
+  topics jsonb default '[]'::jsonb,
   created_at timestamptz default now()
 );
+
+-- Migration for existing folders table:
+alter table public.folders add column if not exists topics jsonb default '[]'::jsonb;
 
 -- 4. Pages (Notes) Table
 create table if not exists public.pages (
